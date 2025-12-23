@@ -8,9 +8,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createConditionalLogicGenerator } from '@/lib/ai/conditionalLogicGenerator';
 import { GenerateConditionalLogicRequest } from '@/lib/ai/types';
+import { validateAIRequest, recordAIUsage } from '@/lib/ai/aiRequestGuard';
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate authentication, feature access, and usage limits
+    const guard = await validateAIRequest('ai_conditional_logic');
+    if (!guard.success) {
+      return guard.response;
+    }
+
     const body = await request.json();
 
     // Validate request
@@ -60,6 +67,9 @@ export async function POST(request: NextRequest) {
         { status: 422 }
       );
     }
+
+    // Increment usage counter on successful generation
+    await recordAIUsage(guard.context.orgId);
 
     return NextResponse.json(result);
   } catch (error) {

@@ -41,6 +41,8 @@ export async function GET() {
         name: org.name,
         slug: org.slug,
         plan: org.plan,
+        subscription: org.subscription,
+        settings: org.settings,
         role: user.organizations.find(o => o.orgId === org.orgId)?.role,
         createdAt: org.createdAt,
       })),

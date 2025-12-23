@@ -52,7 +52,7 @@ interface QuestionType {
 }
 
 const QUESTION_TYPES: QuestionType[] = [
-  // Basic Input
+  // Basic Input - Smart defaults with helpful placeholders and validation
   {
     id: 'short-text',
     label: 'Short Answer',
@@ -60,6 +60,10 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <TextFields />,
     category: 'basic',
     fieldType: 'string',
+    defaultConfig: {
+      placeholder: 'Enter your answer',
+      validation: { maxLength: 255 },
+    },
   },
   {
     id: 'long-text',
@@ -68,7 +72,10 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <Notes />,
     category: 'basic',
     fieldType: 'string',
-    defaultConfig: { validation: { minLength: 0 } },
+    defaultConfig: {
+      placeholder: 'Enter detailed response...',
+      validation: { minLength: 0, maxLength: 2000 },
+    },
   },
   {
     id: 'number',
@@ -77,6 +84,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <Numbers />,
     category: 'basic',
     fieldType: 'number',
+    defaultConfig: {
+      placeholder: '0',
+    },
   },
   {
     id: 'email',
@@ -85,6 +95,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <Email />,
     category: 'basic',
     fieldType: 'email',
+    defaultConfig: {
+      placeholder: 'name@example.com',
+    },
   },
   {
     id: 'phone',
@@ -93,7 +106,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <Phone />,
     category: 'basic',
     fieldType: 'string',
-    defaultConfig: { placeholder: '+1 (555) 000-0000' },
+    defaultConfig: {
+      placeholder: '+1 (555) 000-0000',
+    },
   },
   {
     id: 'url',
@@ -102,6 +117,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <Link />,
     category: 'basic',
     fieldType: 'url',
+    defaultConfig: {
+      placeholder: 'https://example.com',
+    },
   },
   {
     id: 'date',
@@ -110,6 +128,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <CalendarMonth />,
     category: 'basic',
     fieldType: 'date',
+    defaultConfig: {
+      placeholder: 'Select a date',
+    },
   },
   {
     id: 'time',
@@ -118,10 +139,12 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <Timer />,
     category: 'basic',
     fieldType: 'string',
-    defaultConfig: { placeholder: 'HH:MM' },
+    defaultConfig: {
+      placeholder: 'HH:MM',
+    },
   },
 
-  // Choice
+  // Choice - Smart defaults with common configurations
   {
     id: 'dropdown',
     label: 'Dropdown',
@@ -130,6 +153,7 @@ const QUESTION_TYPES: QuestionType[] = [
     category: 'choice',
     fieldType: 'string',
     defaultConfig: {
+      placeholder: 'Select an option',
       lookup: {
         collection: '',
         displayField: '',
@@ -144,6 +168,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <RadioButtonChecked />,
     category: 'choice',
     fieldType: 'string',
+    defaultConfig: {
+      placeholder: 'Choose one',
+    },
   },
   {
     id: 'checkboxes',
@@ -152,6 +179,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <CheckBox />,
     category: 'choice',
     fieldType: 'array',
+    defaultConfig: {
+      placeholder: 'Select all that apply',
+    },
   },
   {
     id: 'yes-no',
@@ -160,6 +190,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <ToggleOn />,
     category: 'choice',
     fieldType: 'boolean',
+    defaultConfig: {
+      defaultValue: false,
+    },
   },
   {
     id: 'rating',
@@ -168,7 +201,10 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <Star />,
     category: 'choice',
     fieldType: 'number',
-    defaultConfig: { validation: { min: 1, max: 5 } },
+    defaultConfig: {
+      validation: { min: 1, max: 5 },
+      placeholder: 'Select rating',
+    },
   },
   {
     id: 'scale',
@@ -177,7 +213,10 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <LinearScale />,
     category: 'choice',
     fieldType: 'number',
-    defaultConfig: { validation: { min: 1, max: 10 } },
+    defaultConfig: {
+      validation: { min: 1, max: 10 },
+      placeholder: 'Select a value',
+    },
   },
   {
     id: 'nps',
@@ -193,10 +232,11 @@ const QUESTION_TYPES: QuestionType[] = [
         lowLabel: 'Not at all likely',
         highLabel: 'Extremely likely',
       },
+      placeholder: 'How likely are you to recommend?',
     },
   },
 
-  // Advanced
+  // Advanced - Smart defaults for complex field types
   {
     id: 'file',
     label: 'File Upload',
@@ -204,6 +244,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <AttachFile />,
     category: 'advanced',
     fieldType: 'string',
+    defaultConfig: {
+      placeholder: 'Click to upload or drag and drop',
+    },
   },
   {
     id: 'image',
@@ -212,6 +255,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <Image />,
     category: 'advanced',
     fieldType: 'string',
+    defaultConfig: {
+      placeholder: 'Upload an image',
+    },
   },
   {
     id: 'tags',
@@ -221,6 +267,7 @@ const QUESTION_TYPES: QuestionType[] = [
     category: 'advanced',
     fieldType: 'array',
     defaultConfig: {
+      placeholder: 'Add tags...',
       arrayPattern: { pattern: 'tags' },
     },
   },
@@ -231,6 +278,9 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <LocationOn />,
     category: 'advanced',
     fieldType: 'object',
+    defaultConfig: {
+      placeholder: 'Enter address',
+    },
   },
   {
     id: 'color',
@@ -239,6 +289,10 @@ const QUESTION_TYPES: QuestionType[] = [
     icon: <Palette />,
     category: 'advanced',
     fieldType: 'string',
+    defaultConfig: {
+      placeholder: 'Select a color',
+      defaultValue: '#000000',
+    },
   },
   {
     id: 'repeater',

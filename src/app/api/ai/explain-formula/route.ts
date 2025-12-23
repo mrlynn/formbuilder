@@ -7,9 +7,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createFormulaAssistant } from '@/lib/ai/formulaAssistant';
+import { validateAIRequest, recordAIUsage } from '@/lib/ai/aiRequestGuard';
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate authentication, feature access, and usage limits
+    const guard = await validateAIRequest('ai_formula_assistant');
+    if (!guard.success) {
+      return guard.response;
+    }
+
     const body = await request.json();
 
     // Validate request
@@ -46,6 +53,9 @@ export async function POST(request: NextRequest) {
         { status: 422 }
       );
     }
+
+    // Increment usage counter on successful generation
+    await recordAIUsage(guard.context.orgId);
 
     return NextResponse.json(result);
   } catch (error) {

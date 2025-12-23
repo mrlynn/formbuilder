@@ -17,7 +17,7 @@ export type AccessControlType = 'public' | 'authenticated' | 'restricted';
 // Organization & Multi-tenancy
 // ============================================
 
-export type OrgPlan = 'free' | 'pro' | 'enterprise';
+export type OrgPlan = 'free' | 'pro' | 'team' | 'enterprise';
 export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
 
 export interface OrganizationSettings {
@@ -36,19 +36,43 @@ export interface Organization {
   name: string;
   slug: string;                       // URL-friendly: "acme-corp"
 
+  // Legacy plan field (deprecated - use subscription.tier)
   plan: OrgPlan;
   settings: OrganizationSettings;
 
-  // Billing (for future use)
+  // Subscription & Billing
+  subscription?: Subscription;
   billingEmail?: string;
   stripeCustomerId?: string;
+  paymentMethods?: PaymentMethod[];
 
-  // Usage tracking
+  // Usage tracking (legacy - see OrganizationUsage for detailed tracking)
   currentMonthSubmissions: number;
   usageResetDate: Date;
 
   createdAt: Date;
   createdBy: string;
+  updatedAt: Date;
+}
+
+// Forward declaration for Subscription (defined later in file)
+// This is needed because Organization references Subscription before it's defined
+export interface Subscription {
+  tier: SubscriptionTier;
+  status: SubscriptionStatus;
+  stripeSubscriptionId?: string;
+  stripePriceId?: string;
+  stripeProductId?: string;
+  billingInterval?: BillingInterval;
+  currentPeriodStart?: Date;
+  currentPeriodEnd?: Date;
+  cancelAtPeriodEnd?: boolean;
+  trialStart?: Date;
+  trialEnd?: Date;
+  seatCount?: number;
+  seatPrice?: number;
+  subscribedAt?: Date;
+  canceledAt?: Date;
   updatedAt: Date;
 }
 
@@ -73,6 +97,13 @@ export const ORG_PLAN_LIMITS: Record<OrgPlan, Partial<OrganizationSettings>> = {
     maxSubmissionsPerMonth: 10000,
     maxConnections: 10,
     dataRetentionDays: 365,
+    allowCustomBranding: true,
+  },
+  team: {
+    maxForms: 200,
+    maxSubmissionsPerMonth: 50000,
+    maxConnections: 50,
+    dataRetentionDays: 730, // 2 years
     allowCustomBranding: true,
   },
   enterprise: {
@@ -347,7 +378,15 @@ export type AuditEventType =
   | 'form.deleted'
   | 'form.submitted'
   | 'form.submission_synced'
-  | 'form.submission_failed';
+  | 'form.submission_failed'
+  | 'subscription.created'
+  | 'subscription.updated'
+  | 'subscription.canceled'
+  | 'subscription.reactivated'
+  | 'subscription.trial_will_end'
+  | 'invoice.paid'
+  | 'invoice.payment_failed'
+  | 'payment_method.attached';
 
 export interface AuditLogEntry {
   _id?: ObjectId;
@@ -407,4 +446,307 @@ export interface OrgInvitation {
   createdAt: Date;
   expiresAt: Date;                    // 7 days
   acceptedAt?: Date;
+}
+
+// ============================================
+// Subscription & Billing
+// ============================================
+
+export type SubscriptionTier = 'free' | 'pro' | 'team' | 'enterprise';
+export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'trialing' | 'incomplete';
+export type BillingInterval = 'month' | 'year';
+
+export interface SubscriptionPricing {
+  monthly: number;                    // Price in cents
+  yearly: number;                     // Price in cents (annual)
+  yearlyDiscount: number;             // Percentage discount for annual
+}
+
+export const TIER_PRICING: Record<SubscriptionTier, SubscriptionPricing> = {
+  free: { monthly: 0, yearly: 0, yearlyDiscount: 0 },
+  pro: { monthly: 1900, yearly: 19000, yearlyDiscount: 17 },      // $19/mo or $190/yr
+  team: { monthly: 4900, yearly: 49000, yearlyDiscount: 17 },     // $49/seat/mo
+  enterprise: { monthly: 0, yearly: 0, yearlyDiscount: 0 },        // Custom pricing
+};
+
+export interface PaymentMethod {
+  id: string;
+  stripePaymentMethodId: string;
+  type: 'card' | 'bank_account';
+  isDefault: boolean;
+
+  // Card details (last4, brand, etc.)
+  card?: {
+    brand: string;                    // 'visa', 'mastercard', etc.
+    last4: string;
+    expMonth: number;
+    expYear: number;
+  };
+
+  createdAt: Date;
+}
+
+export interface Invoice {
+  id: string;
+  stripeInvoiceId: string;
+  status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
+  amountDue: number;                  // In cents
+  amountPaid: number;
+  currency: string;
+  invoiceUrl?: string;
+  invoicePdf?: string;
+  periodStart: Date;
+  periodEnd: Date;
+  createdAt: Date;
+  paidAt?: Date;
+}
+
+// ============================================
+// AI Feature Gates & Usage
+// ============================================
+
+export type AIFeature =
+  // Layer 1: Contextual Suggestions
+  | 'ai_inline_suggestions'
+  | 'ai_field_type_detection'
+  | 'ai_completion_hints'
+  // Layer 2: Command Interface
+  | 'ai_form_generator'
+  | 'ai_command_palette'
+  | 'ai_formula_assistant'
+  | 'ai_conditional_logic'
+  | 'ai_validation_patterns'
+  // Layer 3: Autonomous Agents
+  | 'agent_form_optimization'
+  | 'agent_response_processing'
+  | 'agent_compliance_audit'
+  | 'agent_response_insights'
+  | 'agent_auto_translation';
+
+export type PlatformFeature =
+  | 'custom_branding'
+  | 'white_label'
+  | 'api_access'
+  | 'webhooks'
+  | 'sso_saml'
+  | 'field_encryption'
+  | 'advanced_analytics'
+  | 'csv_export'
+  | 'priority_support'
+  | 'custom_domain';
+
+export interface TierLimits {
+  // Core limits
+  maxForms: number;                   // -1 = unlimited
+  maxSubmissionsPerMonth: number;
+  maxConnections: number;
+  maxFileStorageMb: number;
+  maxFieldsPerForm: number;
+  dataRetentionDays: number;          // -1 = unlimited
+
+  // Team limits
+  maxSeats: number;                   // -1 = unlimited
+
+  // AI limits
+  aiGenerationsPerMonth: number;      // Form generations, field suggestions
+  agentSessionsPerMonth: number;      // Autonomous agent activations
+  responseProcessingPerMonth: number; // Response processing agent runs
+}
+
+export interface TierFeatures {
+  limits: TierLimits;
+  aiFeatures: AIFeature[];
+  platformFeatures: PlatformFeature[];
+}
+
+export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierFeatures> = {
+  free: {
+    limits: {
+      maxForms: 3,
+      maxSubmissionsPerMonth: 100,
+      maxConnections: 1,
+      maxFileStorageMb: 100,
+      maxFieldsPerForm: 10,
+      dataRetentionDays: 30,
+      maxSeats: 1,
+      aiGenerationsPerMonth: 10,
+      agentSessionsPerMonth: 0,
+      responseProcessingPerMonth: 0,
+    },
+    aiFeatures: [
+      'ai_inline_suggestions',
+      'ai_field_type_detection',
+      'ai_formula_assistant',
+    ],
+    platformFeatures: [],
+  },
+  pro: {
+    limits: {
+      maxForms: -1,                   // Unlimited
+      maxSubmissionsPerMonth: 1000,
+      maxConnections: 5,
+      maxFileStorageMb: 1000,
+      maxFieldsPerForm: -1,
+      dataRetentionDays: 365,
+      maxSeats: 1,
+      aiGenerationsPerMonth: 100,
+      agentSessionsPerMonth: 20,
+      responseProcessingPerMonth: 500,
+    },
+    aiFeatures: [
+      'ai_inline_suggestions',
+      'ai_field_type_detection',
+      'ai_completion_hints',
+      'ai_form_generator',
+      'ai_command_palette',
+      'ai_formula_assistant',
+      'ai_conditional_logic',
+      'ai_validation_patterns',
+      'agent_response_insights',
+    ],
+    platformFeatures: [
+      'custom_branding',
+      'csv_export',
+      'webhooks',
+    ],
+  },
+  team: {
+    limits: {
+      maxForms: -1,
+      maxSubmissionsPerMonth: 10000,
+      maxConnections: 20,
+      maxFileStorageMb: 10000,
+      maxFieldsPerForm: -1,
+      dataRetentionDays: -1,
+      maxSeats: -1,
+      aiGenerationsPerMonth: 500,
+      agentSessionsPerMonth: 100,
+      responseProcessingPerMonth: 5000,
+    },
+    aiFeatures: [
+      'ai_inline_suggestions',
+      'ai_field_type_detection',
+      'ai_completion_hints',
+      'ai_form_generator',
+      'ai_command_palette',
+      'ai_formula_assistant',
+      'ai_conditional_logic',
+      'ai_validation_patterns',
+      'agent_form_optimization',
+      'agent_response_processing',
+      'agent_response_insights',
+      'agent_auto_translation',
+    ],
+    platformFeatures: [
+      'custom_branding',
+      'white_label',
+      'api_access',
+      'csv_export',
+      'webhooks',
+      'field_encryption',
+      'advanced_analytics',
+    ],
+  },
+  enterprise: {
+    limits: {
+      maxForms: -1,
+      maxSubmissionsPerMonth: -1,
+      maxConnections: -1,
+      maxFileStorageMb: -1,
+      maxFieldsPerForm: -1,
+      dataRetentionDays: -1,
+      maxSeats: -1,
+      aiGenerationsPerMonth: -1,
+      agentSessionsPerMonth: -1,
+      responseProcessingPerMonth: -1,
+    },
+    aiFeatures: [
+      'ai_inline_suggestions',
+      'ai_field_type_detection',
+      'ai_completion_hints',
+      'ai_form_generator',
+      'ai_command_palette',
+      'ai_formula_assistant',
+      'ai_conditional_logic',
+      'ai_validation_patterns',
+      'agent_form_optimization',
+      'agent_response_processing',
+      'agent_compliance_audit',
+      'agent_response_insights',
+      'agent_auto_translation',
+    ],
+    platformFeatures: [
+      'custom_branding',
+      'white_label',
+      'api_access',
+      'csv_export',
+      'webhooks',
+      'sso_saml',
+      'field_encryption',
+      'advanced_analytics',
+      'priority_support',
+      'custom_domain',
+    ],
+  },
+};
+
+// ============================================
+// Usage Tracking
+// ============================================
+
+export interface OrganizationUsage {
+  _id?: ObjectId;
+  organizationId: string;
+  period: string;                     // "2025-01" format
+
+  // Core usage
+  forms: {
+    created: number;
+    active: number;
+  };
+  submissions: {
+    total: number;
+    byForm: Record<string, number>;
+  };
+  storage: {
+    filesBytes: number;
+    responsesBytes: number;
+  };
+
+  // AI-specific usage
+  ai: {
+    generations: number;              // NL form generation, field suggestions
+    agentSessions: number;            // Autonomous agent activations
+    processingRuns: number;           // Response processing agent runs
+    tokensUsed: number;               // For cost tracking
+  };
+
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// Billing Events (for webhooks)
+// ============================================
+
+export type BillingEventType =
+  | 'subscription.created'
+  | 'subscription.updated'
+  | 'subscription.canceled'
+  | 'subscription.trial_will_end'
+  | 'invoice.paid'
+  | 'invoice.payment_failed'
+  | 'payment_method.attached'
+  | 'payment_method.detached';
+
+export interface BillingEvent {
+  _id?: ObjectId;
+  eventId: string;
+  stripeEventId: string;
+  type: BillingEventType;
+  organizationId: string;
+  data: Record<string, unknown>;
+  processedAt?: Date;
+  createdAt: Date;
 }

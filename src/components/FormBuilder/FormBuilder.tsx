@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
-  Paper,
   Typography,
   Button,
   CircularProgress,
@@ -13,7 +12,6 @@ import {
   IconButton,
   Tooltip,
   Fab,
-  Collapse,
   Chip,
   Drawer,
   Menu,
@@ -21,9 +19,8 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  ButtonGroup
 } from '@mui/material';
-import { Save, Add, Folder, Close, CheckCircle, ContentCopy, OpenInNew, NoteAdd, Edit, Public, Settings, BarChart, List, Code, ChevronLeft, ChevronRight, Visibility, VisibilityOff, Storage, MoreVert, PostAdd } from '@mui/icons-material';
+import { Save, Add, Folder, Close, CheckCircle, ContentCopy, OpenInNew, NoteAdd, Public, Settings, Code, ChevronLeft, ChevronRight, Storage, MoreVert, PostAdd, Tune, TuneOutlined, Keyboard } from '@mui/icons-material';
 import { usePipeline } from '@/contexts/PipelineContext';
 import { CompactFieldList } from './CompactFieldList';
 import { FieldDetailPanel } from './FieldDetailPanel';
@@ -38,6 +35,7 @@ import { QuickPublishButton } from './QuickPublishButton';
 import { AddQuestionDialog } from './AddQuestionDialog';
 import { DataSourceSetupModal } from './DataSourceSetupModal';
 import { FormReadinessChecklist } from './FormReadinessChecklist';
+import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 import { HelpButton } from '@/components/Help';
 import { FieldConfig, FormVariable, MultiPageConfig, FormLifecycle, FormTheme, FormType, SearchConfig, FormDataSource, FormAccessControl, BotProtectionConfig, DraftSettings } from '@/types/form';
 import { generateFieldPath } from '@/utils/fieldPath';
@@ -81,11 +79,73 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
   const [botProtection, setBotProtection] = useState<BotProtectionConfig | undefined>(undefined);
   const [draftSettings, setDraftSettings] = useState<DraftSettings | undefined>(undefined);
   const [moreMenuAnchor, setMoreMenuAnchor] = useState<null | HTMLElement>(null);
+  const [advancedMode, setAdvancedMode] = useState(false);
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
 
   // Get selected field config
   const selectedFieldConfig = selectedFieldPath
     ? fieldConfigs.find(f => f.path === selectedFieldPath)
     : null;
+
+  // Keyboard shortcuts for power users
+  const handleKeyboardShortcuts = useCallback((e: KeyboardEvent) => {
+    // Don't trigger if user is typing in an input
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const cmdKey = isMac ? e.metaKey : e.ctrlKey;
+
+    // Cmd/Ctrl + S: Save form
+    if (cmdKey && e.key === 's') {
+      e.preventDefault();
+      if (fieldConfigs.length > 0) {
+        setSaveDialogOpen(true);
+      }
+    }
+    // Cmd/Ctrl + N: Add new field
+    else if (cmdKey && e.key === 'n') {
+      e.preventDefault();
+      setAddQuestionDialogOpen(true);
+    }
+    // Cmd/Ctrl + ,: Open settings
+    else if (cmdKey && e.key === ',') {
+      e.preventDefault();
+      setSettingsDrawerOpen(true);
+    }
+    // Cmd/Ctrl + Shift + A: Toggle advanced mode
+    else if (cmdKey && e.shiftKey && e.key === 'A') {
+      e.preventDefault();
+      setAdvancedMode(prev => !prev);
+    }
+    // Escape: Close panels/dialogs
+    else if (e.key === 'Escape') {
+      if (selectedFieldPath) {
+        setSelectedFieldPath(null);
+      } else if (settingsDrawerOpen) {
+        setSettingsDrawerOpen(false);
+      } else if (showLibrary) {
+        setShowLibrary(false);
+      }
+    }
+    // Cmd/Ctrl + L: Toggle library
+    else if (cmdKey && e.key === 'l') {
+      e.preventDefault();
+      setShowLibrary(prev => !prev);
+    }
+    // ?: Show keyboard shortcuts help
+    else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+      e.preventDefault();
+      setShortcutsHelpOpen(true);
+    }
+  }, [fieldConfigs.length, selectedFieldPath, settingsDrawerOpen, showLibrary]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyboardShortcuts);
+    return () => window.removeEventListener('keydown', handleKeyboardShortcuts);
+  }, [handleKeyboardShortcuts]);
 
   // Load form from initialFormId when provided (e.g., from URL params)
   useEffect(() => {
@@ -400,139 +460,115 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
+      {/* Simplified Toolbar - Calm UI */}
       <Box
         sx={{
-          p: 2,
+          px: 2,
+          py: 1.5,
           borderBottom: '1px solid',
           borderColor: 'divider',
           bgcolor: 'background.paper',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          gap: 2,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            Form Builder
-          </Typography>
-          <HelpButton topicId="form-builder" tooltip="Form Builder Help" />
-
-          {/* Current form indicator */}
-          {currentFormId ? (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 1.5,
-                py: 0.5,
-                bgcolor: alpha('#2196f3', 0.1),
-                borderRadius: 1,
-                border: '1px solid',
-                borderColor: alpha('#2196f3', 0.3),
-              }}
-            >
-              <Edit fontSize="small" sx={{ color: '#2196f3', fontSize: 16 }} />
-              <Typography variant="caption" sx={{ fontWeight: 600, color: '#2196f3' }}>
-                {currentFormName || 'Untitled Form'}
-              </Typography>
-              {currentFormIsPublished && (
-                <Public fontSize="small" sx={{ color: '#00ED64', fontSize: 14, ml: 0.5 }} />
-              )}
-            </Box>
-          ) : (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 1.5,
-                py: 0.5,
-                bgcolor: alpha('#00ED64', 0.1),
-                borderRadius: 1,
-                border: '1px dashed',
-                borderColor: alpha('#00ED64', 0.3),
-              }}
-            >
-              <NoteAdd fontSize="small" sx={{ color: '#00ED64', fontSize: 16 }} />
-              <Typography variant="caption" sx={{ fontWeight: 600, color: '#00ED64' }}>
-                New Form
-              </Typography>
-            </Box>
-          )}
-
-          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-            {collection || 'No collection connected'}
+        {/* Left: Form identity */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 600,
+              color: 'text.primary',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: 200,
+            }}
+          >
+            {currentFormName || 'New Form'}
           </Typography>
 
-          {/* Data Storage Status Indicator */}
-          {fieldConfigs.length > 0 && (
-            <Tooltip title={dataSource?.collection ? `Submissions: ${dataSource.collection}` : 'Click to configure where submissions are stored'}>
-              <Chip
-                icon={<Storage sx={{ fontSize: 14 }} />}
-                label={dataSource?.collection || 'No storage'}
-                size="small"
-                onClick={() => setDataSourceModalOpen(true)}
-                sx={{
-                  ml: 1,
-                  cursor: 'pointer',
-                  bgcolor: dataSource?.collection ? alpha('#00ED64', 0.1) : alpha('#ff9800', 0.1),
-                  color: dataSource?.collection ? '#00ED64' : '#ff9800',
-                  borderColor: dataSource?.collection ? alpha('#00ED64', 0.3) : alpha('#ff9800', 0.3),
-                  border: '1px solid',
-                  '&:hover': {
-                    bgcolor: dataSource?.collection ? alpha('#00ED64', 0.2) : alpha('#ff9800', 0.2),
-                  },
-                  '& .MuiChip-icon': {
-                    color: 'inherit',
-                  },
-                }}
-              />
-            </Tooltip>
-          )}
+          {/* Status badges - minimal */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {currentFormIsPublished && (
+              <Tooltip title="Published">
+                <Public sx={{ fontSize: 16, color: 'success.main' }} />
+              </Tooltip>
+            )}
+            {isLoading && <CircularProgress size={14} />}
+          </Box>
 
-          {isLoading && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CircularProgress size={12} /> Loading schema...
-            </Typography>
+          <HelpButton topicId="form-builder" tooltip="Help" />
+        </Box>
+
+        {/* Center: Contextual info - only show when relevant */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center' }}>
+          {fieldConfigs.length > 0 && !dataSource?.collection && (
+            <Chip
+              icon={<Storage sx={{ fontSize: 14 }} />}
+              label="Configure storage"
+              size="small"
+              variant="outlined"
+              onClick={() => setDataSourceModalOpen(true)}
+              sx={{
+                cursor: 'pointer',
+                borderColor: 'warning.main',
+                color: 'warning.main',
+                '& .MuiChip-icon': { color: 'inherit' },
+                '&:hover': { bgcolor: alpha('#ff9800', 0.08) },
+              }}
+            />
           )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          {/* Secondary actions as icon buttons */}
+
+        {/* Right: Actions - consolidated */}
+        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
           <Tooltip title="My Forms">
             <IconButton
               onClick={() => setShowLibrary(!showLibrary)}
               size="small"
               sx={{
-                color: showLibrary ? '#2196f3' : 'text.secondary',
-                bgcolor: showLibrary ? alpha('#2196f3', 0.1) : 'transparent',
-                '&:hover': { bgcolor: alpha('#2196f3', 0.1) },
+                color: showLibrary ? 'primary.main' : 'text.secondary',
+                bgcolor: showLibrary ? alpha('#00ED64', 0.08) : 'transparent',
               }}
             >
               <Folder fontSize="small" />
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Form Settings">
+          <Tooltip title="Settings">
             <IconButton
               onClick={() => setSettingsDrawerOpen(true)}
               size="small"
-              sx={{
-                color: 'text.secondary',
-                '&:hover': { bgcolor: alpha('#9c27b0', 0.1), color: '#9c27b0' },
-              }}
+              sx={{ color: 'text.secondary' }}
             >
               <Settings fontSize="small" />
             </IconButton>
           </Tooltip>
 
-          {/* Primary actions */}
+          <Tooltip title={advancedMode ? "Switch to Simple Mode" : "Switch to Advanced Mode"}>
+            <IconButton
+              onClick={() => setAdvancedMode(!advancedMode)}
+              size="small"
+              sx={{
+                color: advancedMode ? 'primary.main' : 'text.secondary',
+                bgcolor: advancedMode ? alpha('#00ED64', 0.08) : 'transparent',
+              }}
+            >
+              {advancedMode ? <Tune fontSize="small" /> : <TuneOutlined fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5, my: 0.5 }} />
+
           <Button
             variant="outlined"
-            startIcon={<Save />}
+            size="small"
             onClick={() => setSaveDialogOpen(true)}
             disabled={fieldConfigs.length === 0}
-            size="small"
+            sx={{ minWidth: 'auto', px: 1.5 }}
           >
             Save
           </Button>
@@ -565,26 +601,8 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
             onConfigureStorage={() => setDataSourceModalOpen(true)}
           />
 
-          {/* View published form button */}
-          {currentFormId && currentFormIsPublished && currentFormSlug && (
-            <Tooltip title="View published form">
-              <IconButton
-                href={`/forms/${currentFormSlug}`}
-                target="_blank"
-                component="a"
-                size="small"
-                sx={{
-                  color: '#00ED64',
-                  '&:hover': { bgcolor: alpha('#00ED64', 0.1) },
-                }}
-              >
-                <OpenInNew fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-
-          {/* More actions menu */}
-          <Tooltip title="More actions">
+          {/* More menu - consolidates secondary actions */}
+          <Tooltip title="More">
             <IconButton
               onClick={(e) => setMoreMenuAnchor(e.currentTarget)}
               size="small"
@@ -600,6 +618,9 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
             onClose={() => setMoreMenuAnchor(null)}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            slotProps={{
+              paper: { sx: { minWidth: 180 } }
+            }}
           >
             {currentFormId && (
               <MenuItem onClick={() => { handleNewForm(); setMoreMenuAnchor(null); }}>
@@ -607,6 +628,22 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
                 <ListItemText>New Form</ListItemText>
               </MenuItem>
             )}
+            {currentFormIsPublished && currentFormSlug && (
+              <MenuItem
+                component="a"
+                href={`/forms/${currentFormSlug}`}
+                target="_blank"
+                onClick={() => setMoreMenuAnchor(null)}
+              >
+                <ListItemIcon><OpenInNew fontSize="small" /></ListItemIcon>
+                <ListItemText>View Published Form</ListItemText>
+              </MenuItem>
+            )}
+            {(currentFormId || currentFormIsPublished) && <Divider sx={{ my: 0.5 }} />}
+            <MenuItem onClick={() => { setDataSourceModalOpen(true); setMoreMenuAnchor(null); }}>
+              <ListItemIcon><Storage fontSize="small" /></ListItemIcon>
+              <ListItemText>Storage Settings</ListItemText>
+            </MenuItem>
             {hasConnection && (
               <MenuItem
                 onClick={() => { handleInsert(); setMoreMenuAnchor(null); }}
@@ -616,10 +653,10 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
                 <ListItemText>Insert Test Document</ListItemText>
               </MenuItem>
             )}
-            {(currentFormId || hasConnection) && <Divider />}
-            <MenuItem onClick={() => { setDataSourceModalOpen(true); setMoreMenuAnchor(null); }}>
-              <ListItemIcon><Storage fontSize="small" /></ListItemIcon>
-              <ListItemText>Configure Storage</ListItemText>
+            <Divider sx={{ my: 0.5 }} />
+            <MenuItem onClick={() => { setShortcutsHelpOpen(true); setMoreMenuAnchor(null); }}>
+              <ListItemIcon><Keyboard fontSize="small" /></ListItemIcon>
+              <ListItemText>Keyboard Shortcuts</ListItemText>
             </MenuItem>
           </Menu>
         </Box>
@@ -788,8 +825,10 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
                       <FieldDetailPanel
                         config={selectedFieldConfig}
                         allFieldConfigs={fieldConfigs}
+                        formSlug={currentFormSlug}
                         onUpdateField={updateFieldConfig}
                         onClose={() => setSelectedFieldPath(null)}
+                        advancedMode={advancedMode}
                       />
                     </Box>
                   )}
@@ -1164,6 +1203,12 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
         currentDataSource={dataSource}
         currentOrganizationId={organizationId}
         formName={currentFormName}
+      />
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        open={shortcutsHelpOpen}
+        onClose={() => setShortcutsHelpOpen(false)}
       />
     </Box>
   );

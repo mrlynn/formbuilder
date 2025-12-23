@@ -3,6 +3,8 @@ import { ReactNode } from 'react';
 import { ClientLayout } from '@/components/ClientLayout';
 import { PipelineProvider } from '@/contexts/PipelineContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { OrganizationProvider } from '@/contexts/OrganizationContext';
+import { DevPanelWrapper } from '@/components/dev/DevPanelWrapper';
 
 export const metadata: Metadata = {
   title: 'FormBuilder - Build MongoDB Forms in Minutes',
@@ -17,7 +19,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <ClientLayout>
           <AuthProvider>
-            <PipelineProvider>{children}</PipelineProvider>
+            <OrganizationProvider>
+              <PipelineProvider>{children}</PipelineProvider>
+              <DevPanelWrapper />
+            </OrganizationProvider>
           </AuthProvider>
         </ClientLayout>
       </body>

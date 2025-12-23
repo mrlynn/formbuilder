@@ -14,6 +14,8 @@ import {
   OAuthState,
   OrgInvitation,
   AuditLogEntry,
+  OrganizationUsage,
+  BillingEvent,
 } from '@/types/platform';
 
 // Connection pool
@@ -123,6 +125,19 @@ async function createPlatformIndexes(db: Db): Promise<void> {
     await auditLogs.createIndex({ timestamp: -1 });
     await auditLogs.createIndex({ resourceType: 1, resourceId: 1 });
 
+    // Organization usage collection
+    const usage = db.collection('organization_usage');
+    await usage.createIndex({ organizationId: 1, period: 1 }, { unique: true });
+    await usage.createIndex({ organizationId: 1 });
+    await usage.createIndex({ period: 1 });
+
+    // Billing events collection
+    const billingEvents = db.collection('billing_events');
+    await billingEvents.createIndex({ stripeEventId: 1 }, { unique: true });
+    await billingEvents.createIndex({ organizationId: 1 });
+    await billingEvents.createIndex({ type: 1 });
+    await billingEvents.createIndex({ createdAt: -1 });
+
     console.log('[Platform DB] Indexes created successfully');
   } catch (error) {
     // Indexes may already exist
@@ -201,6 +216,16 @@ export async function getInvitationsCollection(): Promise<Collection<OrgInvitati
 export async function getPlatformAuditCollection(): Promise<Collection<AuditLogEntry>> {
   const db = await getPlatformDb();
   return db.collection<AuditLogEntry>('platform_audit_logs');
+}
+
+export async function getUsageCollection(): Promise<Collection<OrganizationUsage>> {
+  const db = await getPlatformDb();
+  return db.collection<OrganizationUsage>('organization_usage');
+}
+
+export async function getBillingEventsCollection(): Promise<Collection<BillingEvent>> {
+  const db = await getPlatformDb();
+  return db.collection<BillingEvent>('billing_events');
 }
 
 // ============================================

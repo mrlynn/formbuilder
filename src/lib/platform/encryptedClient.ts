@@ -226,23 +226,129 @@ export async function encryptDocumentFields(
       continue;
     }
 
+    // Declare variables outside try block for error logging
+    let algorithm: 'Indexed' | 'Unindexed' = 'Unindexed';
+    let encryptOptions: any = {};
+
     try {
       // Determine algorithm based on config
-      const algorithm =
-        encryptionConfig.algorithm === 'Indexed' || encryptionConfig.queryType === 'equality'
-          ? 'Indexed'
-          : 'Unindexed';
+      // MongoDB driver encrypt() supports: 'Indexed' (for equality queries) or 'Unindexed' (no queries)
+      // Note: 'Range' algorithm is not directly supported by encrypt() - it requires schema configuration
+      if (encryptionConfig.algorithm === 'Range') {
+        // Range queries require schema-level configuration, not explicit encryption with Range algorithm
+        // For explicit encryption, we treat Range as Unindexed (no contentionFactor)
+        algorithm = 'Unindexed';
+      } else if (encryptionConfig.algorithm === 'Indexed' || encryptionConfig.queryType === 'equality') {
+        algorithm = 'Indexed';
+      } else {
+        algorithm = 'Unindexed';
+      }
 
-      const encryptedValue = await clientEncryption.encrypt(value, {
+      // #region agent log - detailed encryption config
+      console.log(`[DEBUG] Encrypting field "${fieldPath}":`, {
+        algorithm,
+        configAlgorithm: encryptionConfig.algorithm,
+        queryType: encryptionConfig.queryType,
+        hasContentionFactor: encryptionConfig.contentionFactor !== undefined,
+        contentionFactorValue: encryptionConfig.contentionFactor,
+      });
+      fetch('http://127.0.0.1:7243/ingest/dfcee207-b55f-409a-a46d-5a6c88d8a47c', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'post-fix',
+          hypothesisId: 'H1',
+          location: 'encryptedClient.ts:encryptDocumentFields:pre-encrypt',
+          message: 'About to encrypt field',
+          data: {
+            fieldPath,
+            algorithm,
+            configAlgorithm: encryptionConfig.algorithm,
+            queryType: encryptionConfig.queryType,
+            hasContentionFactor: encryptionConfig.contentionFactor !== undefined,
+            contentionFactorValue: encryptionConfig.contentionFactor,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+
+      const encryptOptions: any = {
         keyId,
         algorithm,
-        contentionFactor: encryptionConfig.contentionFactor || 4,
-      });
+      };
+
+      // Only set contentionFactor when algorithm is 'Indexed'
+      // MongoDB driver requires: contentionFactor can ONLY be set for 'Indexed' algorithm
+      // Setting it for 'Unindexed' or 'Range' will cause "cannot set contention factor with no index type" error
+      if (algorithm === 'Indexed' && typeof encryptionConfig.contentionFactor === 'number') {
+        encryptOptions.contentionFactor = encryptionConfig.contentionFactor;
+        console.log(`[DEBUG] Setting contentionFactor=${encryptOptions.contentionFactor} for Indexed field "${fieldPath}"`);
+      } else {
+        console.log(`[DEBUG] NOT setting contentionFactor for field "${fieldPath}" (algorithm=${algorithm}, hasContention=${typeof encryptionConfig.contentionFactor === 'number'})`);
+      }
+
+      // #region agent log - final encrypt options
+      console.log(`[DEBUG] Final encrypt options for "${fieldPath}":`, JSON.stringify(encryptOptions, null, 2));
+      fetch('http://127.0.0.1:7243/ingest/dfcee207-b55f-409a-a46d-5a6c88d8a47c', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'post-fix',
+          hypothesisId: 'H2',
+          location: 'encryptedClient.ts:encryptDocumentFields:encrypt-options',
+          message: 'Encrypt options for field',
+          data: {
+            fieldPath,
+            options: encryptOptions,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      const encryptedValue = await clientEncryption.encrypt(value, encryptOptions);
 
       setNestedValue(encryptedDoc, fieldPath, encryptedValue);
       console.log(`[EncryptedClient] Encrypted field "${fieldPath}" with algorithm "${algorithm}"`);
     } catch (error) {
-      console.error(`[EncryptedClient] Failed to encrypt field "${fieldPath}":`, error);
+      const errorObj = error as Error;
+      console.error(`[EncryptedClient] Failed to encrypt field "${fieldPath}":`, errorObj);
+      console.error(`[DEBUG] Error details:`, {
+        fieldPath,
+        errorName: errorObj?.name,
+        errorMessage: errorObj?.message,
+        errorStack: errorObj?.stack,
+        algorithm,
+        configAlgorithm: encryptionConfig.algorithm,
+        queryType: encryptionConfig.queryType,
+        hadContentionFactor: 'contentionFactor' in encryptOptions,
+      });
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/dfcee207-b55f-409a-a46d-5a6c88d8a47c', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'post-fix',
+          hypothesisId: 'H3',
+          location: 'encryptedClient.ts:encryptDocumentFields:error',
+          message: 'Error encrypting field',
+          data: {
+            fieldPath,
+            errorMessage: errorObj?.message || 'unknown',
+            errorName: errorObj?.name || 'unknown',
+            algorithm,
+            configAlgorithm: encryptionConfig.algorithm,
+            queryType: encryptionConfig.queryType,
+            hadContentionFactor: 'contentionFactor' in encryptOptions,
+            encryptOptions: encryptOptions,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       throw error;
     }
   }

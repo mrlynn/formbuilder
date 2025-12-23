@@ -234,22 +234,34 @@ export function CompactFieldList({
           opacity: config.included ? 1 : 0.5,
           cursor: onReorderFields ? 'grab' : 'pointer',
           transition: 'all 0.15s',
+          // Hover actions pattern - hide actions by default, show on hover
+          '& .field-actions': {
+            opacity: 0,
+            transition: 'opacity 0.15s',
+          },
           '&:hover': {
             bgcolor: isSelected ? alpha('#00ED64', 0.15) : alpha('#00ED64', 0.05),
+            '& .field-actions': {
+              opacity: 1,
+            },
           },
           '&:active': onReorderFields ? { cursor: 'grabbing' } : {},
           '&.Mui-selected': {
             bgcolor: alpha('#00ED64', 0.15),
+            '& .field-actions': {
+              opacity: 1,
+            },
             '&:hover': {
               bgcolor: alpha('#00ED64', 0.2),
             }
           }
         }}
       >
-        {/* Drag Handle */}
+        {/* Drag Handle - visible on hover */}
         {onReorderFields && (
           <DragIndicator
             fontSize="small"
+            className="field-actions"
             sx={{ color: 'text.disabled', mr: 0.5, fontSize: 16 }}
           />
         )}
@@ -315,51 +327,65 @@ export function CompactFieldList({
           )}
         </Box>
 
-        {/* Type chip - compact */}
+        {/* Actions container - contextual actions on hover */}
+        <Box className="field-actions" sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          {/* Include/exclude toggle */}
+          {!isLayout && (
+            <Tooltip title={config.included ? 'Hide from form' : 'Show in form'}>
+              <IconButton
+                size="small"
+                onClick={(e) => handleToggleInclude(e, config)}
+                sx={{
+                  p: 0.25,
+                  color: config.included ? 'text.secondary' : 'text.disabled',
+                  '&:hover': {
+                    color: config.included ? 'warning.main' : 'success.main',
+                    bgcolor: config.included ? alpha('#ff9800', 0.1) : alpha('#00ED64', 0.1),
+                  }
+                }}
+              >
+                {config.included ? (
+                  <VisibilityOff sx={{ fontSize: 16 }} />
+                ) : (
+                  <Visibility sx={{ fontSize: 16 }} />
+                )}
+              </IconButton>
+            </Tooltip>
+          )}
+
+          {/* Delete button for custom fields */}
+          {config.source === 'custom' && onRemoveField && (
+            <Tooltip title="Delete">
+              <IconButton
+                size="small"
+                onClick={(e) => handleDelete(e, config.path)}
+                sx={{
+                  p: 0.25,
+                  color: 'text.secondary',
+                  '&:hover': {
+                    color: 'error.main',
+                    bgcolor: alpha('#f44336', 0.1),
+                  }
+                }}
+              >
+                <Delete sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+
+        {/* Type chip - always visible but subtle */}
         <Chip
           label={config.type}
           size="small"
           sx={{
             height: 18,
             fontSize: '0.6rem',
-            bgcolor: isLayout ? alpha('#9c27b0', 0.1) : alpha('#00ED64', 0.1),
-            color: isLayout ? '#9c27b0' : '#00ED64',
-            mr: 0.5
+            bgcolor: isLayout ? alpha('#9c27b0', 0.08) : alpha('#00ED64', 0.08),
+            color: isLayout ? '#9c27b0' : 'text.secondary',
+            ml: 0.5,
           }}
         />
-
-        {/* Include/exclude toggle */}
-        {!isLayout && (
-          <Tooltip title={config.included ? 'Included in form' : 'Excluded from form'}>
-            <IconButton
-              size="small"
-              onClick={(e) => handleToggleInclude(e, config)}
-              sx={{
-                p: 0.25,
-                color: config.included ? '#00ED64' : 'text.disabled'
-              }}
-            >
-              {config.included ? (
-                <Visibility sx={{ fontSize: 16 }} />
-              ) : (
-                <VisibilityOff sx={{ fontSize: 16 }} />
-              )}
-            </IconButton>
-          </Tooltip>
-        )}
-
-        {/* Delete button for custom fields */}
-        {config.source === 'custom' && onRemoveField && (
-          <Tooltip title="Remove">
-            <IconButton
-              size="small"
-              onClick={(e) => handleDelete(e, config.path)}
-              sx={{ p: 0.25, color: 'error.main' }}
-            >
-              <Delete sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-        )}
 
         {/* Selection indicator */}
         <ChevronRight
@@ -367,7 +393,8 @@ export function CompactFieldList({
             fontSize: 18,
             color: isSelected ? '#00ED64' : 'text.disabled',
             transition: 'transform 0.15s',
-            transform: isSelected ? 'rotate(90deg)' : 'rotate(0deg)'
+            transform: isSelected ? 'rotate(90deg)' : 'rotate(0deg)',
+            ml: 0.25,
           }}
         />
       </ListItemButton>

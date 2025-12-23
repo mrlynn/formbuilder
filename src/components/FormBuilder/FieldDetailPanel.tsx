@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Box,
   Typography,
@@ -9,7 +10,10 @@ import {
   alpha,
   IconButton,
   Chip,
-  Divider
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider,
 } from '@mui/material';
 import {
   Close,
@@ -17,7 +21,15 @@ import {
   Notes,
   HorizontalRule,
   Image,
-  SpaceBar
+  SpaceBar,
+  ExpandMore,
+  Tune,
+  Rule,
+  Link as LinkIcon,
+  Functions,
+  Security,
+  Repeat,
+  DataArray,
 } from '@mui/icons-material';
 import { FieldConfig, LayoutFieldType } from '@/types/form';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
@@ -51,6 +63,7 @@ interface FieldDetailPanelProps {
   formSlug?: string;
   onUpdateField: (path: string, updates: Partial<FieldConfig>) => void;
   onClose: () => void;
+  advancedMode?: boolean;
 }
 
 export function FieldDetailPanel({
@@ -58,7 +71,8 @@ export function FieldDetailPanel({
   allFieldConfigs,
   formSlug,
   onUpdateField,
-  onClose
+  onClose,
+  advancedMode = false,
 }: FieldDetailPanelProps) {
   // Check if this is a layout field
   const isLayoutField = (cfg: FieldConfig) => {
@@ -288,136 +302,230 @@ export function FieldDetailPanel({
           </Box>
         )}
 
-        {/* Data field content */}
+        {/* Data field content - Progressive Disclosure with Accordions */}
         {!isLayout && config.included && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              size="small"
-              label="Label"
-              value={config.label}
-              onChange={(e) => onUpdateField(config.path, { label: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              size="small"
-              label="Placeholder"
-              value={config.placeholder || ''}
-              onChange={(e) => onUpdateField(config.path, { placeholder: e.target.value })}
-              fullWidth
-            />
-
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    size="small"
-                    checked={config.required}
-                    onChange={(e) =>
-                      onUpdateField(config.path, { required: e.target.checked })
-                    }
-                  />
-                }
-                label={<Typography variant="body2">Required</Typography>}
-                sx={{ m: 0 }}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {/* Basic Settings - Always visible, no accordion */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
+              <TextField
+                size="small"
+                label="Label"
+                value={config.label}
+                onChange={(e) => onUpdateField(config.path, { label: e.target.value })}
+                fullWidth
               />
-              {config.source === 'custom' && (
+              <TextField
+                size="small"
+                label="Placeholder"
+                value={config.placeholder || ''}
+                onChange={(e) => onUpdateField(config.path, { placeholder: e.target.value })}
+                fullWidth
+              />
+
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <FormControlLabel
                   control={
                     <Switch
                       size="small"
-                      checked={config.includeInDocument !== false}
+                      checked={config.required}
                       onChange={(e) =>
-                        onUpdateField(config.path, { includeInDocument: e.target.checked })
+                        onUpdateField(config.path, { required: e.target.checked })
                       }
                     />
                   }
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography variant="body2">Include in Document</Typography>
-                      <HelpButton
-                        topicId="include-in-document"
-                        tooltip="What does 'Include in Document' mean?"
-                        size="small"
-                      />
-                    </Box>
-                  }
+                  label={<Typography variant="body2">Required</Typography>}
                   sx={{ m: 0 }}
                 />
-              )}
+                {config.source === 'custom' && (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={config.includeInDocument !== false}
+                        onChange={(e) =>
+                          onUpdateField(config.path, { includeInDocument: e.target.checked })
+                        }
+                      />
+                    }
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="body2">Save to DB</Typography>
+                        <HelpButton
+                          topicId="include-in-document"
+                          tooltip="What does 'Include in Document' mean?"
+                          size="small"
+                        />
+                      </Box>
+                    }
+                    sx={{ m: 0 }}
+                  />
+                )}
+              </Box>
             </Box>
 
-            {/* Type-specific attribute editor */}
-            <QuestionTypeAttributeEditor
-              config={config}
-              onUpdate={(updates) => onUpdateField(config.path, updates)}
-            />
+            <Divider sx={{ mb: 1 }} />
 
-            <Divider sx={{ my: 1 }} />
+            {/* Type Options - Accordion */}
+            <Accordion defaultExpanded>
+              <AccordionSummary
+                expandIcon={<ExpandMore />}
+                sx={{ px: 0, minHeight: 40 }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Tune sx={{ fontSize: 18, color: 'text.secondary' }} />
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    Type Options
+                  </Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0, pt: 0 }}>
+                <QuestionTypeAttributeEditor
+                  config={config}
+                  onUpdate={(updates) => onUpdateField(config.path, updates)}
+                />
+              </AccordionDetails>
+            </Accordion>
 
-            {/* Feature editors */}
-            <ConditionalLogicEditor
-              config={config}
-              allFieldConfigs={allFieldConfigs}
-              onUpdate={(conditionalLogic) =>
-                onUpdateField(config.path, { conditionalLogic })
-              }
-            />
+            {/* Logic & Data - Accordion (Advanced mode or if has active config) */}
+            {(advancedMode || config.conditionalLogic?.conditions?.length || config.lookup || config.computed || config.repeater?.enabled) && (
+              <Accordion>
+                <AccordionSummary
+                  expandIcon={<ExpandMore />}
+                  sx={{ px: 0, minHeight: 40 }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Rule sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      Logic & Data
+                    </Typography>
+                    {(config.conditionalLogic?.conditions?.length || config.lookup || config.computed) && (
+                      <Chip
+                        label="Active"
+                        size="small"
+                        sx={{
+                          height: 16,
+                          fontSize: '0.6rem',
+                          bgcolor: alpha('#00ED64', 0.1),
+                          color: '#00ED64',
+                        }}
+                      />
+                    )}
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails sx={{ px: 0, pt: 0 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <ConditionalLogicEditor
+                      config={config}
+                      allFieldConfigs={allFieldConfigs}
+                      onUpdate={(conditionalLogic) =>
+                        onUpdateField(config.path, { conditionalLogic })
+                      }
+                    />
 
-            <LookupConfigEditor
-              config={config}
-              allFieldConfigs={allFieldConfigs}
-              onUpdate={(lookup) =>
-                onUpdateField(config.path, { lookup })
-              }
-            />
+                    <LookupConfigEditor
+                      config={config}
+                      allFieldConfigs={allFieldConfigs}
+                      onUpdate={(lookup) =>
+                        onUpdateField(config.path, { lookup })
+                      }
+                    />
 
-            <ComputedConfigEditor
-              config={config}
-              allFieldConfigs={allFieldConfigs}
-              onUpdate={(computed) =>
-                onUpdateField(config.path, { computed })
-              }
-            />
+                    <ComputedConfigEditor
+                      config={config}
+                      allFieldConfigs={allFieldConfigs}
+                      onUpdate={(computed) =>
+                        onUpdateField(config.path, { computed })
+                      }
+                    />
 
-            <RepeaterConfigEditor
-              config={config}
-              onUpdate={(repeater) =>
-                onUpdateField(config.path, { repeater })
-              }
-            />
+                    <RepeaterConfigEditor
+                      config={config}
+                      onUpdate={(repeater) =>
+                        onUpdateField(config.path, { repeater })
+                      }
+                    />
 
-            {/* Array Pattern Editor - only for array fields */}
-            {(config.type === 'array' || config.type === 'array-object') && (
-              <ArrayPatternConfigEditor
-                config={config.arrayPattern}
-                onChange={(arrayPattern) =>
-                  onUpdateField(config.path, { arrayPattern })
-                }
-                sampleValue={config.defaultValue}
-              />
+                    {/* Array Pattern Editor - only for array fields */}
+                    {(config.type === 'array' || config.type === 'array-object') && (
+                      <ArrayPatternConfigEditor
+                        config={config.arrayPattern}
+                        onChange={(arrayPattern) =>
+                          onUpdateField(config.path, { arrayPattern })
+                        }
+                        sampleValue={config.defaultValue}
+                      />
+                    )}
+
+                    {/* URL Parameter Config Editor - for url-param fields */}
+                    {isUrlParamField && (
+                      <URLParamConfigEditor
+                        config={config.urlParam || { paramName: '', dataType: 'string' }}
+                        fieldPath={config.path}
+                        formSlug={formSlug}
+                        onChange={(urlParam) =>
+                          onUpdateField(config.path, { urlParam })
+                        }
+                      />
+                    )}
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
             )}
 
-            {/* URL Parameter Config Editor - for url-param fields */}
-            {isUrlParamField && (
-              <URLParamConfigEditor
-                config={config.urlParam || { paramName: '', dataType: 'string' }}
-                fieldPath={config.path}
-                formSlug={formSlug}
-                onChange={(urlParam) =>
-                  onUpdateField(config.path, { urlParam })
-                }
-              />
+            {/* Security - Accordion (Advanced mode or if has active config) */}
+            {(advancedMode || config.encryption?.enabled) && (
+              <Accordion>
+                <AccordionSummary
+                  expandIcon={<ExpandMore />}
+                  sx={{ px: 0, minHeight: 40 }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Security sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      Security
+                    </Typography>
+                    {config.encryption?.enabled && (
+                      <Chip
+                        label="Encrypted"
+                        size="small"
+                        sx={{
+                          height: 16,
+                          fontSize: '0.6rem',
+                          bgcolor: alpha('#9c27b0', 0.1),
+                          color: '#9c27b0',
+                        }}
+                      />
+                    )}
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails sx={{ px: 0, pt: 0 }}>
+                  <FieldEncryptionSettings
+                    fieldConfig={config}
+                    onChange={(encryption) =>
+                      onUpdateField(config.path, { encryption })
+                    }
+                  />
+                </AccordionDetails>
+              </Accordion>
             )}
 
-            <Divider sx={{ my: 2 }} />
-
-            {/* Field Encryption Settings */}
-            <FieldEncryptionSettings
-              fieldConfig={config}
-              onChange={(encryption) =>
-                onUpdateField(config.path, { encryption })
-              }
-            />
+            {/* Hint for simple mode users */}
+            {!advancedMode && !config.conditionalLogic?.conditions?.length && !config.lookup && !config.computed && !config.encryption?.enabled && (
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  mt: 2,
+                  p: 1.5,
+                  bgcolor: alpha('#00ED64', 0.05),
+                  borderRadius: 1,
+                  color: 'text.secondary',
+                  textAlign: 'center',
+                }}
+              >
+                Enable Advanced Mode in the toolbar to access conditional logic, lookups, and security settings.
+              </Typography>
+            )}
           </Box>
         )}
 
