@@ -1,0 +1,35 @@
+/* ReactFlow overrides */
+.react-flow__attribution {
+  display: none !important;
+}
+
+/* Allotment Resizable Panel Styles */
+.split-view-view {
+  overflow: hidden;
+}
+
+.split-view-sash {
+  background-color: rgba(0, 237, 100, 0.2) !important;
+  transition: background-color 0.2s !important;
+}
+
+.split-view-sash:hover,
+.split-view-sash.split-view-sash-drag {
+  background-color: rgba(0, 237, 100, 0.4) !important;
+}
+
+.react-flow {
+  width: 100%;
+  height: 100%;
+}
+
+.react-flow__renderer {
+  width: 100%;
+  height: 100%;
+}
+
+.react-flow__viewport {
+  width: 100%;
+  height: 100%;
+}
+

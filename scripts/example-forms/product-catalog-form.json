@@ -1,0 +1,581 @@
+{
+  "name": "Product Catalog Entry",
+  "description": "E-commerce product entry form with pricing, inventory, and variant management",
+  "collection": "products",
+  "database": "form_builder_test",
+  "slug": "product-entry",
+  "isPublished": true,
+
+  "fieldConfigs": [
+    {
+      "path": "layout_basic_info",
+      "label": "Product Information",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Product Information",
+        "subtitle": "Basic product details and identification"
+      }
+    },
+    {
+      "path": "name",
+      "label": "Product Name",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "placeholder": "Enter product name",
+      "validation": {
+        "minLength": 3,
+        "maxLength": 200
+      }
+    },
+    {
+      "path": "sku",
+      "label": "SKU",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "placeholder": "e.g., PROD-2024-001"
+    },
+    {
+      "path": "description",
+      "label": "Description",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "placeholder": "Detailed product description"
+    },
+    {
+      "path": "brand",
+      "label": "Brand",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "placeholder": "Brand name"
+    },
+    {
+      "path": "manufacturer",
+      "label": "Manufacturer",
+      "type": "string",
+      "included": true,
+      "required": false,
+      "placeholder": "Manufacturer name"
+    },
+    {
+      "path": "categories",
+      "label": "Categories",
+      "type": "array",
+      "included": true,
+      "required": true,
+      "placeholder": "Add categories...",
+      "arrayPattern": {
+        "pattern": "tags",
+        "suggestions": ["Electronics", "Audio", "Video", "Computers", "Accessories", "Home", "Office", "Furniture", "Outdoor", "Sports"],
+        "allowCustom": true
+      }
+    },
+    {
+      "path": "layout_pricing_header",
+      "label": "Pricing",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Pricing & Cost",
+        "subtitle": "Set pricing, cost, and tax information"
+      }
+    },
+    {
+      "path": "layout_pricing_info",
+      "label": "Pricing Info",
+      "type": "description",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "description",
+        "content": "Base price is the MSRP. Cost is your acquisition cost. Margin is calculated automatically. Discounts can be applied as a percentage.",
+        "contentType": "text"
+      }
+    },
+    {
+      "path": "basePrice",
+      "label": "Base Price ($)",
+      "type": "number",
+      "included": true,
+      "required": true,
+      "placeholder": "0.00",
+      "validation": {
+        "min": 0
+      }
+    },
+    {
+      "path": "cost",
+      "label": "Cost ($)",
+      "type": "number",
+      "included": true,
+      "required": true,
+      "placeholder": "0.00",
+      "validation": {
+        "min": 0
+      }
+    },
+    {
+      "path": "margin",
+      "label": "Profit Margin (%)",
+      "type": "number",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "computed": {
+        "formula": "ROUND(((basePrice - cost) / basePrice) * 100, 2)",
+        "dependencies": ["basePrice", "cost"],
+        "outputType": "number"
+      }
+    },
+    {
+      "path": "discountPercent",
+      "label": "Discount (%)",
+      "type": "number",
+      "included": true,
+      "required": false,
+      "defaultValue": 0,
+      "validation": {
+        "min": 0,
+        "max": 100
+      }
+    },
+    {
+      "path": "discountedPrice",
+      "label": "Sale Price ($)",
+      "type": "number",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "computed": {
+        "formula": "ROUND(basePrice * (1 - discountPercent / 100), 2)",
+        "dependencies": ["basePrice", "discountPercent"],
+        "outputType": "number"
+      }
+    },
+    {
+      "path": "layout_divider_pricing",
+      "label": "Divider",
+      "type": "divider",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": { "type": "divider" }
+    },
+    {
+      "path": "currency",
+      "label": "Currency",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "defaultValue": "USD"
+    },
+    {
+      "path": "taxable",
+      "label": "Taxable Product",
+      "type": "boolean",
+      "included": true,
+      "required": false,
+      "defaultValue": true
+    },
+    {
+      "path": "taxRate",
+      "label": "Tax Rate (%)",
+      "type": "number",
+      "included": true,
+      "required": false,
+      "defaultValue": 8.25,
+      "validation": {
+        "min": 0,
+        "max": 30
+      },
+      "conditionalLogic": {
+        "action": "show",
+        "logicType": "all",
+        "conditions": [
+          { "field": "taxable", "operator": "isTrue" }
+        ]
+      }
+    },
+    {
+      "path": "layout_inventory_header",
+      "label": "Inventory",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Inventory Management",
+        "subtitle": "Stock levels and warehouse information"
+      }
+    },
+    {
+      "path": "inStock",
+      "label": "Currently In Stock",
+      "type": "boolean",
+      "included": true,
+      "required": false,
+      "defaultValue": true
+    },
+    {
+      "path": "stockQuantity",
+      "label": "Stock Quantity",
+      "type": "number",
+      "included": true,
+      "required": true,
+      "defaultValue": 0,
+      "validation": {
+        "min": 0
+      },
+      "conditionalLogic": {
+        "action": "show",
+        "logicType": "all",
+        "conditions": [
+          { "field": "inStock", "operator": "isTrue" }
+        ]
+      }
+    },
+    {
+      "path": "lowStockThreshold",
+      "label": "Low Stock Alert Threshold",
+      "type": "number",
+      "included": true,
+      "required": false,
+      "defaultValue": 10,
+      "validation": {
+        "min": 0
+      }
+    },
+    {
+      "path": "reorderPoint",
+      "label": "Reorder Point",
+      "type": "number",
+      "included": true,
+      "required": false,
+      "defaultValue": 25,
+      "validation": {
+        "min": 0
+      }
+    },
+    {
+      "path": "warehouseLocation",
+      "label": "Warehouse Location",
+      "type": "string",
+      "included": true,
+      "required": false,
+      "placeholder": "e.g., Warehouse A - Shelf 12B"
+    },
+    {
+      "path": "layout_specs_header",
+      "label": "Specifications",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Product Specifications",
+        "subtitle": "Technical specifications and attributes (uses MongoDB Attribute Pattern)"
+      }
+    },
+    {
+      "path": "specifications",
+      "label": "Specifications",
+      "type": "array-object",
+      "included": true,
+      "required": false,
+      "arrayPattern": {
+        "pattern": "key-value",
+        "keyField": "key",
+        "valueField": "value",
+        "keyLabel": "Specification",
+        "valueLabel": "Value",
+        "valueType": "mixed"
+      }
+    },
+    {
+      "path": "layout_variants_header",
+      "label": "Variants",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Product Variants",
+        "subtitle": "Add color, size, or other variants with their own SKU and pricing"
+      }
+    },
+    {
+      "path": "variants",
+      "label": "Variants",
+      "type": "array-object",
+      "included": true,
+      "required": false,
+      "repeater": {
+        "enabled": true,
+        "minItems": 0,
+        "maxItems": 50,
+        "itemSchema": [
+          { "name": "color", "type": "string", "label": "Color", "required": true, "placeholder": "e.g., Black, Silver" },
+          { "name": "size", "type": "string", "label": "Size", "required": false, "placeholder": "e.g., S, M, L, XL" },
+          { "name": "sku", "type": "string", "label": "Variant SKU", "required": true, "placeholder": "Unique SKU for this variant" },
+          { "name": "additionalPrice", "type": "number", "label": "Price Adjustment ($)", "required": false },
+          { "name": "stock", "type": "number", "label": "Stock", "required": true }
+        ],
+        "allowDuplication": true,
+        "collapsible": true
+      }
+    },
+    {
+      "path": "layout_media_header",
+      "label": "Media",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Product Images",
+        "subtitle": "Add image URLs for product gallery"
+      }
+    },
+    {
+      "path": "images",
+      "label": "Image URLs",
+      "type": "array",
+      "included": true,
+      "required": false,
+      "placeholder": "Add image URL...",
+      "arrayPattern": {
+        "pattern": "tags",
+        "allowCustom": true
+      }
+    },
+    {
+      "path": "layout_publishing_header",
+      "label": "Publishing",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Publishing Options"
+      }
+    },
+    {
+      "path": "isPublished",
+      "label": "Publish Product",
+      "type": "boolean",
+      "included": true,
+      "required": false,
+      "defaultValue": false
+    },
+    {
+      "path": "isFeatured",
+      "label": "Featured Product",
+      "type": "boolean",
+      "included": true,
+      "required": false,
+      "defaultValue": false,
+      "conditionalLogic": {
+        "action": "show",
+        "logicType": "all",
+        "conditions": [
+          { "field": "isPublished", "operator": "isTrue" }
+        ]
+      }
+    },
+    {
+      "path": "publishedAt",
+      "label": "Publish Date",
+      "type": "date",
+      "included": true,
+      "required": false,
+      "conditionalLogic": {
+        "action": "show",
+        "logicType": "all",
+        "conditions": [
+          { "field": "isPublished", "operator": "isTrue" }
+        ]
+      }
+    }
+  ],
+
+  "multiPage": {
+    "enabled": true,
+    "showStepIndicator": true,
+    "stepIndicatorStyle": "tabs",
+    "allowJumpToPage": true,
+    "validateOnPageChange": true,
+    "showPageTitles": true,
+    "submitButtonLabel": "Save Product",
+    "pages": [
+      {
+        "id": "basic",
+        "title": "Basic Info",
+        "description": "Product name, description, and categories",
+        "fields": [
+          "layout_basic_info",
+          "name",
+          "sku",
+          "description",
+          "brand",
+          "manufacturer",
+          "categories"
+        ],
+        "order": 1,
+        "showInNavigation": true
+      },
+      {
+        "id": "pricing",
+        "title": "Pricing",
+        "description": "Pricing, cost, and tax settings",
+        "fields": [
+          "layout_pricing_header",
+          "layout_pricing_info",
+          "basePrice",
+          "cost",
+          "margin",
+          "discountPercent",
+          "discountedPrice",
+          "layout_divider_pricing",
+          "currency",
+          "taxable",
+          "taxRate"
+        ],
+        "order": 2,
+        "showInNavigation": true
+      },
+      {
+        "id": "inventory",
+        "title": "Inventory",
+        "description": "Stock levels and warehouse info",
+        "fields": [
+          "layout_inventory_header",
+          "inStock",
+          "stockQuantity",
+          "lowStockThreshold",
+          "reorderPoint",
+          "warehouseLocation"
+        ],
+        "order": 3,
+        "showInNavigation": true
+      },
+      {
+        "id": "details",
+        "title": "Details",
+        "description": "Specifications and variants",
+        "fields": [
+          "layout_specs_header",
+          "specifications",
+          "layout_variants_header",
+          "variants"
+        ],
+        "order": 4,
+        "showInNavigation": true
+      },
+      {
+        "id": "media",
+        "title": "Media & Publish",
+        "description": "Images and publishing options",
+        "fields": [
+          "layout_media_header",
+          "images",
+          "layout_publishing_header",
+          "isPublished",
+          "isFeatured",
+          "publishedAt"
+        ],
+        "order": 5,
+        "showInNavigation": true
+      }
+    ]
+  },
+
+  "theme": {
+    "primaryColor": "#2196F3",
+    "secondaryColor": "#FF9800",
+    "backgroundColor": "#F5F5F5",
+    "surfaceColor": "#FFFFFF",
+    "borderRadius": 12,
+    "spacing": "comfortable",
+    "inputStyle": "filled",
+    "buttonStyle": "contained",
+    "elevation": 2,
+    "mode": "light"
+  },
+
+  "lifecycle": {
+    "create": {
+      "defaults": {
+        "currency": "USD",
+        "taxable": true,
+        "taxRate": 8.25,
+        "inStock": true,
+        "stockQuantity": 0,
+        "lowStockThreshold": 10,
+        "reorderPoint": 25,
+        "discountPercent": 0,
+        "isPublished": false,
+        "isFeatured": false
+      },
+      "onSubmit": {
+        "mode": "insert",
+        "transforms": {
+          "addFields": {
+            "createdAt": "$$NOW",
+            "updatedAt": "$$NOW"
+          }
+        },
+        "success": {
+          "action": "toast",
+          "message": "Product created successfully!"
+        },
+        "error": {
+          "action": "toast"
+        }
+      }
+    },
+    "edit": {
+      "onSubmit": {
+        "mode": "update",
+        "transforms": {
+          "addFields": {
+            "updatedAt": "$$NOW"
+          }
+        },
+        "success": {
+          "action": "toast",
+          "message": "Product updated!"
+        },
+        "error": {
+          "action": "toast"
+        }
+      }
+    }
+  }
+}

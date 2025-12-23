@@ -1,0 +1,637 @@
+{
+  "name": "Employee Onboarding Form",
+  "description": "Comprehensive employee onboarding form demonstrating all form builder features",
+  "collection": "employees",
+  "database": "form_builder_test",
+  "slug": "employee-onboarding",
+  "isPublished": true,
+
+  "fieldConfigs": [
+    {
+      "path": "layout_welcome_header",
+      "label": "Welcome",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Welcome to Our Team!",
+        "subtitle": "Please complete this onboarding form to get started. All fields marked with * are required."
+      }
+    },
+    {
+      "path": "layout_personal_section",
+      "label": "Personal Information",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Personal Information",
+        "subtitle": "Your basic contact details"
+      }
+    },
+    {
+      "path": "firstName",
+      "label": "First Name",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "placeholder": "Enter your first name",
+      "validation": {
+        "minLength": 2,
+        "maxLength": 50
+      }
+    },
+    {
+      "path": "lastName",
+      "label": "Last Name",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "placeholder": "Enter your last name",
+      "validation": {
+        "minLength": 2,
+        "maxLength": 50
+      }
+    },
+    {
+      "path": "email",
+      "label": "Email Address",
+      "type": "email",
+      "included": true,
+      "required": true,
+      "placeholder": "you@company.com"
+    },
+    {
+      "path": "phone",
+      "label": "Phone Number",
+      "type": "string",
+      "included": true,
+      "required": false,
+      "placeholder": "+1-555-000-0000"
+    },
+    {
+      "path": "dateOfBirth",
+      "label": "Date of Birth",
+      "type": "date",
+      "included": true,
+      "required": true
+    },
+    {
+      "path": "layout_divider_1",
+      "label": "Divider",
+      "type": "divider",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "divider"
+      }
+    },
+    {
+      "path": "address",
+      "label": "Home Address",
+      "type": "object",
+      "included": true,
+      "required": true
+    },
+    {
+      "path": "layout_employment_section",
+      "label": "Employment Details",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Employment Details",
+        "subtitle": "Your position and compensation information"
+      }
+    },
+    {
+      "path": "employeeId",
+      "label": "Employee ID",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "placeholder": "EMP-YYYY-XXX",
+      "modeConfig": {
+        "editableIn": ["create"],
+        "visibleIn": ["create", "edit", "view"]
+      }
+    },
+    {
+      "path": "departmentCode",
+      "label": "Department",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "lookup": {
+        "collection": "departments",
+        "displayField": "name",
+        "valueField": "code",
+        "searchable": true,
+        "preloadOptions": true
+      }
+    },
+    {
+      "path": "jobTitle",
+      "label": "Job Title",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "lookup": {
+        "collection": "job_titles",
+        "displayField": "title",
+        "valueField": "title",
+        "filterField": "departmentCode",
+        "filterSourceField": "departmentCode",
+        "searchable": true
+      }
+    },
+    {
+      "path": "managerId",
+      "label": "Reports To",
+      "type": "string",
+      "included": true,
+      "required": false,
+      "lookup": {
+        "collection": "employees",
+        "displayField": "firstName",
+        "valueField": "_id",
+        "searchable": true
+      }
+    },
+    {
+      "path": "hireDate",
+      "label": "Start Date",
+      "type": "date",
+      "included": true,
+      "required": true
+    },
+    {
+      "path": "salary",
+      "label": "Annual Salary",
+      "type": "number",
+      "included": true,
+      "required": true,
+      "placeholder": "Enter annual salary",
+      "validation": {
+        "min": 30000,
+        "max": 500000
+      }
+    },
+    {
+      "path": "bonus",
+      "label": "Sign-on Bonus",
+      "type": "number",
+      "included": true,
+      "required": false,
+      "defaultValue": 0,
+      "validation": {
+        "min": 0
+      }
+    },
+    {
+      "path": "stockOptions",
+      "label": "Stock Options Value",
+      "type": "number",
+      "included": true,
+      "required": false,
+      "defaultValue": 0,
+      "validation": {
+        "min": 0
+      }
+    },
+    {
+      "path": "totalCompensation",
+      "label": "Total Compensation",
+      "type": "number",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "computed": {
+        "formula": "salary + bonus + stockOptions",
+        "dependencies": ["salary", "bonus", "stockOptions"],
+        "outputType": "number"
+      }
+    },
+    {
+      "path": "layout_work_arrangement",
+      "label": "Work Arrangement Info",
+      "type": "description",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "description",
+        "content": "Please indicate your work arrangement preferences. Remote employees will need to provide their home office setup details.",
+        "contentType": "text"
+      }
+    },
+    {
+      "path": "isFullTime",
+      "label": "Full-Time Employee",
+      "type": "boolean",
+      "included": true,
+      "required": false,
+      "defaultValue": true
+    },
+    {
+      "path": "isRemote",
+      "label": "Remote Worker",
+      "type": "boolean",
+      "included": true,
+      "required": false,
+      "defaultValue": false
+    },
+    {
+      "path": "layout_skills_section",
+      "label": "Skills & Experience",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Skills & Experience",
+        "subtitle": "Tell us about your professional background"
+      }
+    },
+    {
+      "path": "skills",
+      "label": "Technical Skills",
+      "type": "array",
+      "included": true,
+      "required": false,
+      "placeholder": "Add a skill and press Enter",
+      "arrayPattern": {
+        "pattern": "tags",
+        "suggestions": ["JavaScript", "TypeScript", "Python", "React", "Node.js", "MongoDB", "AWS", "Docker", "Kubernetes", "GraphQL", "SQL", "Java", "Go", "Rust"],
+        "allowCustom": true
+      }
+    },
+    {
+      "path": "workHistory",
+      "label": "Work History",
+      "type": "array-object",
+      "included": true,
+      "required": false,
+      "repeater": {
+        "enabled": true,
+        "minItems": 0,
+        "maxItems": 10,
+        "itemSchema": [
+          { "name": "company", "type": "string", "label": "Company Name", "required": true, "placeholder": "Company name" },
+          { "name": "title", "type": "string", "label": "Job Title", "required": true, "placeholder": "Your role" },
+          { "name": "startDate", "type": "date", "label": "Start Date", "required": true },
+          { "name": "endDate", "type": "date", "label": "End Date", "required": false },
+          { "name": "description", "type": "string", "label": "Description", "required": false, "placeholder": "Brief description of responsibilities" }
+        ],
+        "allowDuplication": false,
+        "collapsible": true
+      }
+    },
+    {
+      "path": "certifications",
+      "label": "Professional Certifications",
+      "type": "array-object",
+      "included": true,
+      "required": false,
+      "repeater": {
+        "enabled": true,
+        "minItems": 0,
+        "maxItems": 20,
+        "itemSchema": [
+          { "name": "name", "type": "string", "label": "Certification Name", "required": true, "placeholder": "e.g., AWS Solutions Architect" },
+          { "name": "issuer", "type": "string", "label": "Issuing Organization", "required": true, "placeholder": "e.g., Amazon" },
+          { "name": "issueDate", "type": "date", "label": "Issue Date", "required": true },
+          { "name": "expirationDate", "type": "date", "label": "Expiration Date", "required": false }
+        ],
+        "allowDuplication": false,
+        "collapsible": true
+      }
+    },
+    {
+      "path": "layout_benefits_section",
+      "label": "Benefits Enrollment",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Benefits Enrollment",
+        "subtitle": "Select your benefit options. You can change these during open enrollment."
+      }
+    },
+    {
+      "path": "enrolledInHealthcare",
+      "label": "Enroll in Healthcare",
+      "type": "boolean",
+      "included": true,
+      "required": false,
+      "defaultValue": false
+    },
+    {
+      "path": "healthcarePlan",
+      "label": "Healthcare Plan",
+      "type": "string",
+      "included": true,
+      "required": false,
+      "conditionalLogic": {
+        "action": "show",
+        "logicType": "all",
+        "conditions": [
+          { "field": "enrolledInHealthcare", "operator": "isTrue" }
+        ]
+      },
+      "lookup": {
+        "collection": "healthcare_plans",
+        "displayField": "name",
+        "valueField": "code",
+        "preloadOptions": true
+      }
+    },
+    {
+      "path": "enrolledIn401k",
+      "label": "Enroll in 401(k)",
+      "type": "boolean",
+      "included": true,
+      "required": false,
+      "defaultValue": false
+    },
+    {
+      "path": "contribution401k",
+      "label": "401(k) Contribution %",
+      "type": "number",
+      "included": true,
+      "required": false,
+      "placeholder": "1-20",
+      "validation": {
+        "min": 1,
+        "max": 20
+      },
+      "conditionalLogic": {
+        "action": "show",
+        "logicType": "all",
+        "conditions": [
+          { "field": "enrolledIn401k", "operator": "isTrue" }
+        ]
+      }
+    },
+    {
+      "path": "layout_spacer_1",
+      "label": "Spacer",
+      "type": "spacer",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "spacer",
+        "height": 32
+      }
+    },
+    {
+      "path": "layout_emergency_section",
+      "label": "Emergency Contact",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Emergency Contact",
+        "subtitle": "Please provide an emergency contact who we can reach if needed"
+      }
+    },
+    {
+      "path": "emergencyContact",
+      "label": "Emergency Contact",
+      "type": "object",
+      "included": true,
+      "required": true
+    },
+    {
+      "path": "layout_additional_section",
+      "label": "Additional Information",
+      "type": "section-header",
+      "included": true,
+      "required": false,
+      "source": "custom",
+      "includeInDocument": false,
+      "layout": {
+        "type": "section-header",
+        "title": "Additional Information",
+        "subtitle": "Optional preferences and metadata"
+      }
+    },
+    {
+      "path": "metadata",
+      "label": "Employee Preferences",
+      "type": "array-object",
+      "included": true,
+      "required": false,
+      "arrayPattern": {
+        "pattern": "key-value",
+        "keyField": "key",
+        "valueField": "value",
+        "keyLabel": "Preference",
+        "valueLabel": "Value",
+        "valueType": "string"
+      }
+    },
+    {
+      "path": "status",
+      "label": "Employee Status",
+      "type": "string",
+      "included": true,
+      "required": true,
+      "defaultValue": "active",
+      "modeConfig": {
+        "visibleIn": ["edit", "view"],
+        "editableIn": ["edit"]
+      }
+    }
+  ],
+
+  "variables": [
+    {
+      "name": "selectedDepartment",
+      "type": "string",
+      "description": "Currently selected department for cascading lookups",
+      "valueSource": {
+        "type": "field",
+        "fieldPath": "departmentCode"
+      }
+    },
+    {
+      "name": "isNewHire",
+      "type": "boolean",
+      "defaultValue": true,
+      "description": "Flag to indicate this is a new hire form"
+    }
+  ],
+
+  "multiPage": {
+    "enabled": true,
+    "showStepIndicator": true,
+    "stepIndicatorStyle": "progress",
+    "allowJumpToPage": false,
+    "validateOnPageChange": true,
+    "showPageTitles": true,
+    "submitButtonLabel": "Complete Onboarding",
+    "showReviewPage": true,
+    "pages": [
+      {
+        "id": "page-1",
+        "title": "Personal Information",
+        "description": "Your basic contact details and address",
+        "fields": [
+          "layout_welcome_header",
+          "layout_personal_section",
+          "firstName",
+          "lastName",
+          "email",
+          "phone",
+          "dateOfBirth",
+          "layout_divider_1",
+          "address"
+        ],
+        "order": 1,
+        "showInNavigation": true
+      },
+      {
+        "id": "page-2",
+        "title": "Employment Details",
+        "description": "Position, compensation, and work arrangement",
+        "fields": [
+          "layout_employment_section",
+          "employeeId",
+          "departmentCode",
+          "jobTitle",
+          "managerId",
+          "hireDate",
+          "salary",
+          "bonus",
+          "stockOptions",
+          "totalCompensation",
+          "layout_work_arrangement",
+          "isFullTime",
+          "isRemote"
+        ],
+        "order": 2,
+        "showInNavigation": true
+      },
+      {
+        "id": "page-3",
+        "title": "Skills & Experience",
+        "description": "Your professional background and qualifications",
+        "fields": [
+          "layout_skills_section",
+          "skills",
+          "workHistory",
+          "certifications"
+        ],
+        "order": 3,
+        "showInNavigation": true
+      },
+      {
+        "id": "page-4",
+        "title": "Benefits & Emergency",
+        "description": "Benefit enrollment and emergency contact",
+        "fields": [
+          "layout_benefits_section",
+          "enrolledInHealthcare",
+          "healthcarePlan",
+          "enrolledIn401k",
+          "contribution401k",
+          "layout_spacer_1",
+          "layout_emergency_section",
+          "emergencyContact",
+          "layout_additional_section",
+          "metadata",
+          "status"
+        ],
+        "order": 4,
+        "showInNavigation": true
+      }
+    ]
+  },
+
+  "theme": {
+    "preset": "mongodb",
+    "primaryColor": "#00ED64",
+    "secondaryColor": "#001E2B",
+    "backgroundColor": "#FAFAFA",
+    "surfaceColor": "#FFFFFF",
+    "borderRadius": 8,
+    "spacing": "comfortable",
+    "inputStyle": "outlined",
+    "buttonStyle": "contained",
+    "elevation": 1,
+    "mode": "light"
+  },
+
+  "lifecycle": {
+    "create": {
+      "defaults": {
+        "status": "active",
+        "isFullTime": true,
+        "isRemote": false,
+        "enrolledInHealthcare": false,
+        "enrolledIn401k": false,
+        "bonus": 0,
+        "stockOptions": 0
+      },
+      "onSubmit": {
+        "mode": "insert",
+        "transforms": {
+          "addFields": {
+            "createdAt": "$$NOW",
+            "updatedAt": "$$NOW"
+          }
+        },
+        "success": {
+          "action": "toast",
+          "message": "Employee onboarding completed successfully!"
+        },
+        "error": {
+          "action": "toast",
+          "message": "Failed to save employee data. Please try again."
+        }
+      }
+    },
+    "edit": {
+      "onSubmit": {
+        "mode": "update",
+        "transforms": {
+          "addFields": {
+            "updatedAt": "$$NOW"
+          }
+        },
+        "success": {
+          "action": "toast",
+          "message": "Employee information updated successfully!"
+        },
+        "error": {
+          "action": "toast"
+        }
+      },
+      "immutableFields": ["employeeId", "hireDate"]
+    }
+  }
+}

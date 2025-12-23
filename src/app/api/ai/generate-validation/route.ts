@@ -1,0 +1,89 @@
+/**
+ * AI Validation Generation API Endpoint
+ *
+ * POST /api/ai/generate-validation
+ * Generates validation rules from natural language description.
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createValidationGenerator, COMMON_PATTERNS } from '@/lib/ai/validationGenerator';
+import { GenerateValidationRequest } from '@/lib/ai/types';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    // Validate request
+    if (!body.field || !body.field.path || !body.field.label) {
+      return NextResponse.json(
+        { success: false, error: 'Field with path and label is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.description || typeof body.description !== 'string') {
+      return NextResponse.json(
+        { success: false, error: 'Description is required and must be a string' },
+        { status: 400 }
+      );
+    }
+
+    // Check for API key
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { success: false, error: 'AI service is not configured. Please set OPENAI_API_KEY.' },
+        { status: 503 }
+      );
+    }
+
+    const generator = createValidationGenerator(apiKey);
+
+    const validationRequest: GenerateValidationRequest = {
+      field: body.field,
+      description: body.description,
+    };
+
+    const result = await generator.generateValidation(validationRequest);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error },
+        { status: 422 }
+      );
+    }
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Validation generation API error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET /api/ai/generate-validation
+ * Returns the list of common validation patterns.
+ */
+export async function GET() {
+  try {
+    return NextResponse.json({
+      success: true,
+      patterns: COMMON_PATTERNS,
+    });
+  } catch (error) {
+    console.error('Common patterns API error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error',
+      },
+      { status: 500 }
+    );
+  }
+}
