@@ -5,7 +5,7 @@
  * Provides a dedicated page for importing data into MongoDB collections
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Box,
@@ -36,7 +36,23 @@ interface Connection {
   status: 'active' | 'disabled' | 'deleted';
 }
 
+// Wrapper component to handle Suspense boundary for useSearchParams
 export default function DataImportPage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
+        <AppNavBar />
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <CircularProgress />
+        </Box>
+      </Box>
+    }>
+      <DataImportPageContent />
+    </Suspense>
+  );
+}
+
+function DataImportPageContent() {
   const searchParams = useSearchParams();
   const { organization, currentOrgId, isLoading: orgLoading } = useOrganization();
 
