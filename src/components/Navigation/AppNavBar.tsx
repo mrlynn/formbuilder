@@ -30,6 +30,7 @@ import {
   Add,
   DarkMode,
   LightMode,
+  Settings,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -275,6 +276,17 @@ export function AppNavBar() {
                       <ListItemText primary="Set up Passkey" secondary="Enable biometric login" />
                     </MenuItem>
                   )}
+
+                  <MenuItem
+                    component={Link}
+                    href="/settings"
+                    onClick={handleMenuClose}
+                  >
+                    <ListItemIcon>
+                      <Settings sx={{ fontSize: 18 }} />
+                    </ListItemIcon>
+                    <ListItemText primary="Settings" secondary="Organizations & Connections" />
+                  </MenuItem>
 
                   <MenuItem onClick={() => { openSearch(); handleMenuClose(); }}>
                     <ListItemIcon>

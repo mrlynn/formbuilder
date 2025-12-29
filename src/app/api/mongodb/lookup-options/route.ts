@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { sessionOptions, ensureSessionId } from '@/lib/session';
 import { MongoClient } from 'mongodb';
 import { getForms, getPublishedFormById, getPublishedFormBySlug } from '@/lib/storage';
+import { getDecryptedConnectionString } from '@/lib/platform/connectionVault';
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,18 +40,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!form.connectionString || !form.database) {
+    // Get connection string - support both legacy connectionString and new dataSource.vaultId
+    let connectionString: string | undefined;
+    let database: string | undefined;
+
+    if (form.dataSource?.vaultId && form.organizationId) {
+      // New vault-based connection
+      const credentials = await getDecryptedConnectionString(form.organizationId, form.dataSource.vaultId);
+      if (credentials) {
+        connectionString = credentials.connectionString;
+        database = credentials.database;
+      }
+    } else if (form.connectionString && form.database) {
+      // Legacy direct connection string
+      connectionString = form.connectionString;
+      database = form.database;
+    }
+
+    if (!connectionString || !database) {
       return NextResponse.json(
         { success: false, error: 'Form does not have database connection configured' },
         { status: 400 }
       );
     }
 
-    const client = new MongoClient(form.connectionString);
+    const client = new MongoClient(connectionString);
 
     try {
       await client.connect();
-      const db = client.db(form.database);
+      const db = client.db(database);
       const coll = db.collection(collection);
 
       // Build projection for only the fields we need

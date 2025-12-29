@@ -35,7 +35,7 @@ import {
   Repeat,
   DataArray,
 } from '@mui/icons-material';
-import { FieldConfig, LayoutFieldType, FieldWidth } from '@/types/form';
+import { FieldConfig, LayoutFieldType, FieldWidth, FormDataSource } from '@/types/form';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
 import { LookupConfigEditor } from './LookupConfigEditor';
 import { ComputedConfigEditor } from './ComputedConfigEditor';
@@ -68,6 +68,8 @@ interface FieldDetailPanelProps {
   onUpdateField: (path: string, updates: Partial<FieldConfig>) => void;
   onClose: () => void;
   advancedMode?: boolean;
+  dataSource?: FormDataSource;
+  organizationId?: string;
 }
 
 export function FieldDetailPanel({
@@ -77,6 +79,8 @@ export function FieldDetailPanel({
   onUpdateField,
   onClose,
   advancedMode = false,
+  dataSource,
+  organizationId,
 }: FieldDetailPanelProps) {
   // Check if this is a layout field
   const isLayoutField = (cfg: FieldConfig) => {
@@ -445,6 +449,8 @@ export function FieldDetailPanel({
                       onUpdate={(lookup) =>
                         onUpdateField(config.path, { lookup })
                       }
+                      dataSource={dataSource}
+                      organizationId={organizationId}
                     />
 
                     <ComputedConfigEditor

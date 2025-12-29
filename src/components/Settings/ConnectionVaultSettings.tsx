@@ -28,8 +28,12 @@ import {
   Delete,
   PlayArrow,
   Lock,
+  ContentCopy,
 } from '@mui/icons-material';
 import { AddConnectionDialog } from './AddConnectionDialog';
+import { DuplicateConnectionDialog } from './DuplicateConnectionDialog';
+import { ClusterManagement } from './ClusterManagement';
+import { SampleDataLoader } from './SampleDataLoader';
 
 interface Connection {
   vaultId: string;
@@ -58,6 +62,10 @@ export function ConnectionVaultSettings() {
 
   // Create connection dialog
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  // Duplicate connection dialog
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [connectionToDuplicate, setConnectionToDuplicate] = useState<Connection | null>(null);
 
   useEffect(() => {
     fetchOrganizations();
@@ -143,6 +151,17 @@ export function ConnectionVaultSettings() {
     fetchConnections(selectedOrgId);
   };
 
+  const handleDuplicateConnection = (conn: Connection) => {
+    setConnectionToDuplicate(conn);
+    setDuplicateDialogOpen(true);
+  };
+
+  const handleDuplicateSuccess = () => {
+    setDuplicateDialogOpen(false);
+    setConnectionToDuplicate(null);
+    fetchConnections(selectedOrgId);
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
@@ -213,6 +232,33 @@ export function ConnectionVaultSettings() {
           </Button>
         </Box>
       </Box>
+
+      {/* Show cluster management for selected org */}
+      {selectedOrgId && (
+        <ClusterManagement organizationId={selectedOrgId} />
+      )}
+
+      {/* Sample Data Loader */}
+      {selectedOrgId && (
+        <Box sx={{ mb: 3 }}>
+          <SampleDataLoader
+            organizationId={selectedOrgId}
+            onDataLoaded={() => {
+              // Could refresh connections or show a notification
+            }}
+          />
+        </Box>
+      )}
+
+      <Divider sx={{ my: 3 }} />
+
+      {/* Custom Connections Section */}
+      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+        Custom Connections
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Add your own MongoDB connections for complete control over your data storage.
+      </Typography>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -327,6 +373,15 @@ export function ConnectionVaultSettings() {
                           <PlayArrow fontSize="small" />
                         </IconButton>
                       </Tooltip>
+                      <Tooltip title="Duplicate connection">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDuplicateConnection(conn)}
+                          sx={{ color: 'primary.main' }}
+                        >
+                          <ContentCopy fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Delete connection">
                         <IconButton
                           size="small"
@@ -390,6 +445,20 @@ export function ConnectionVaultSettings() {
         organizationName={organizations.find((o) => o.orgId === selectedOrgId)?.name}
         onSuccess={handleConnectionCreated}
       />
+
+      {/* Duplicate Connection Dialog */}
+      {connectionToDuplicate && (
+        <DuplicateConnectionDialog
+          open={duplicateDialogOpen}
+          onClose={() => {
+            setDuplicateDialogOpen(false);
+            setConnectionToDuplicate(null);
+          }}
+          organizationId={selectedOrgId}
+          sourceConnection={connectionToDuplicate}
+          onSuccess={handleDuplicateSuccess}
+        />
+      )}
     </Box>
   );
 }

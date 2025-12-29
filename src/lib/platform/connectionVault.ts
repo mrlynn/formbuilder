@@ -189,6 +189,82 @@ export async function listUserVaults(
 }
 
 /**
+ * Duplicate an existing vault with a new name and optionally different database
+ */
+export interface DuplicateVaultInput {
+  name: string;
+  description?: string;
+  database?: string; // Optional: use different database
+  allowedCollections?: string[]; // Optional: override collections
+}
+
+export async function duplicateConnectionVault(
+  organizationId: string,
+  sourceVaultId: string,
+  input: DuplicateVaultInput,
+  duplicatedBy: string
+): Promise<ConnectionVault> {
+  const collection = await getConnectionVaultCollection(organizationId);
+
+  // Get the source vault with encrypted connection string
+  const sourceVault = await collection.findOne({ vaultId: sourceVaultId, status: 'active' });
+
+  if (!sourceVault) {
+    throw new Error('Source connection not found or not active');
+  }
+
+  // Create new vault with same connection string but new metadata
+  const newVault: ConnectionVault = {
+    vaultId: generateSecureId('vault'),
+    organizationId,
+    createdBy: duplicatedBy,
+    name: input.name,
+    description: input.description || sourceVault.description,
+    encryptedConnectionString: sourceVault.encryptedConnectionString, // Copy encrypted string
+    encryptionKeyId: sourceVault.encryptionKeyId,
+    database: input.database || sourceVault.database,
+    allowedCollections: input.allowedCollections || sourceVault.allowedCollections,
+    permissions: [
+      {
+        userId: duplicatedBy,
+        role: 'owner',
+        grantedAt: new Date(),
+        grantedBy: duplicatedBy,
+      },
+    ],
+    status: 'active',
+    usageCount: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  await collection.insertOne(newVault);
+
+  // Audit log
+  await logVaultEvent(organizationId, {
+    eventType: 'connection.created',
+    userId: duplicatedBy,
+    resourceType: 'connection',
+    resourceId: newVault.vaultId,
+    organizationId,
+    action: 'create',
+    details: {
+      name: input.name,
+      database: newVault.database,
+      allowedCollections: newVault.allowedCollections,
+      duplicatedFrom: sourceVaultId,
+    },
+    timestamp: new Date(),
+  });
+
+  // Return without the encrypted connection string for safety
+  return {
+    ...newVault,
+    encryptedConnectionString: '[REDACTED]',
+  };
+}
+
+/**
  * Update vault metadata (not the connection string)
  */
 export async function updateVault(
@@ -481,13 +557,19 @@ export async function testVaultConnection(
 // ============================================
 
 /**
- * Check if a collection is allowed for a vault
+ * Check if a collection is allowed for a vault.
+ * If vaultId is undefined, uses the org's default database and allows all collections.
  */
 export async function isCollectionAllowed(
   organizationId: string,
-  vaultId: string,
+  vaultId: string | undefined,
   collection: string
 ): Promise<boolean> {
+  // If no vaultId, we're using the org's default database - allow all collections
+  if (!vaultId) {
+    return true;
+  }
+
   const vault = await getVault(organizationId, vaultId);
 
   if (!vault) return false;

@@ -15,7 +15,7 @@ import {
   Delete,
   ContentCopy,
 } from '@mui/icons-material';
-import { FieldConfig } from '@/types/form';
+import { FieldConfig, FormDataSource } from '@/types/form';
 import { FieldDetailPanel } from './FieldDetailPanel';
 
 interface FieldConfigDrawerProps {
@@ -24,6 +24,8 @@ interface FieldConfigDrawerProps {
   allFieldConfigs: FieldConfig[];
   formSlug?: string;
   advancedMode?: boolean;
+  dataSource?: FormDataSource;
+  organizationId?: string;
   onClose: () => void;
   onUpdateField: (path: string, updates: Partial<FieldConfig>) => void;
   onDeleteField?: (path: string) => void;
@@ -36,6 +38,8 @@ export function FieldConfigDrawer({
   allFieldConfigs,
   formSlug,
   advancedMode = false,
+  dataSource,
+  organizationId,
   onClose,
   onUpdateField,
   onDeleteField,
@@ -79,6 +83,8 @@ export function FieldConfigDrawer({
           onUpdateField={onUpdateField}
           onClose={onClose}
           advancedMode={advancedMode}
+          dataSource={dataSource}
+          organizationId={organizationId}
         />
 
         {/* Footer with actions */}

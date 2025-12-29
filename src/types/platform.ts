@@ -262,7 +262,7 @@ export const ORG_ROLE_CAPABILITIES: Record<OrgRole, string[]> = {
 // ============================================
 
 export interface FormDataSource {
-  vaultId: string;                    // Reference to ConnectionVault
+  vaultId?: string;                   // Reference to ConnectionVault (optional - uses org default if omitted)
   collection: string;                 // Target collection for submissions
 }
 
@@ -338,7 +338,8 @@ export interface PlatformFormSubmission {
   lastSyncAttempt?: Date;
 
   // Target info (denormalized for sync worker)
-  targetVaultId: string;
+  // vaultId is optional - if undefined, uses org's default database
+  targetVaultId?: string;
   targetCollection: string;
 
   // Encryption configuration (for background sync retries)
@@ -551,6 +552,11 @@ export interface TierLimits {
   aiGenerationsPerMonth: number;      // Form generations, field suggestions
   agentSessionsPerMonth: number;      // Autonomous agent activations
   responseProcessingPerMonth: number; // Response processing agent runs
+
+  // Auto-provisioned cluster limits (M0 free tier)
+  autoProvisionedCluster?: boolean;   // Whether tier gets auto-provisioned M0 cluster
+  clusterStorageMb?: number;          // 512 for M0
+  clusterMaxConnections?: number;     // 500 for M0
 }
 
 export interface TierFeatures {
@@ -563,15 +569,19 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierFeatures> = {
   free: {
     limits: {
       maxForms: 3,
-      maxSubmissionsPerMonth: 100,
-      maxConnections: 1,
+      maxSubmissionsPerMonth: 1000,          // Increased for M0 cluster
+      maxConnections: 1,                      // 1 auto-provisioned connection
       maxFileStorageMb: 100,
-      maxFieldsPerForm: 10,
+      maxFieldsPerForm: 20,                   // Increased
       dataRetentionDays: 30,
       maxSeats: 1,
       aiGenerationsPerMonth: 10,
       agentSessionsPerMonth: 0,
       responseProcessingPerMonth: 0,
+      // Auto-provisioned M0 cluster
+      autoProvisionedCluster: true,
+      clusterStorageMb: 512,
+      clusterMaxConnections: 500,
     },
     aiFeatures: [
       'ai_inline_suggestions',
@@ -790,4 +800,32 @@ export interface BillingEvent {
   data: Record<string, unknown>;
   processedAt?: Date;
   createdAt: Date;
+}
+
+// ============================================
+// Auto-Provisioned Clusters
+// ============================================
+
+export type ClusterProvisioningStatus =
+  | 'pending'
+  | 'creating_project'
+  | 'creating_cluster'
+  | 'creating_user'
+  | 'configuring_network'
+  | 'ready'
+  | 'failed'
+  | 'deleted';
+
+export interface ProvisionedClusterInfo {
+  clusterId: string;
+  provider: 'AWS' | 'GCP' | 'AZURE';
+  region: string;
+  instanceSize: 'M0';
+  status: ClusterProvisioningStatus;
+  storageLimitMb: number;
+  maxConnections: number;
+  vaultId?: string;
+  createdAt: Date;
+  provisioningStartedAt: Date;
+  provisioningCompletedAt?: Date;
 }

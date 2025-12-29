@@ -239,9 +239,36 @@ export async function syncSubmission(
   }
 
   // Get connection credentials
+  // If no targetVaultId, use org's default database (provisioned cluster's vault)
+  let effectiveVaultId = submission.targetVaultId;
+
+  if (!effectiveVaultId) {
+    // Use org's default database - get vault from provisioned cluster
+    const { getProvisionedClusterForOrg } = await import('@/lib/atlas/provisioning');
+    const cluster = await getProvisionedClusterForOrg(organizationId);
+    if (cluster?.vaultId) {
+      effectiveVaultId = cluster.vaultId;
+    }
+  }
+
+  if (!effectiveVaultId) {
+    await updateSyncStatus(collection, submissionId, {
+      syncStatus: 'failed',
+      syncError: 'No connection vault found for organization',
+      syncAttempts: submission.syncAttempts + 1,
+      lastSyncAttempt: new Date(),
+    });
+
+    return {
+      success: false,
+      status: 'failed',
+      error: 'No provisioned cluster or connection vault found',
+    };
+  }
+
   const credentials = await getDecryptedConnectionString(
     organizationId,
-    submission.targetVaultId
+    effectiveVaultId
   );
 
   if (!credentials) {

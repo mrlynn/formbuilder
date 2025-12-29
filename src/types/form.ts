@@ -767,9 +767,11 @@ export interface FormEvent {
  * Secure reference to a MongoDB connection.
  * The actual connection string is stored encrypted in the Connection Vault.
  * Forms only store the vaultId reference - never the connection string itself.
+ *
+ * For simplified flow: if vaultId is omitted, uses the org's default database.
  */
 export interface FormDataSource {
-  vaultId: string;                    // Reference to ConnectionVault entry
+  vaultId?: string;                   // Reference to ConnectionVault entry (optional for org default)
   collection: string;                 // Target collection for submissions
 }
 

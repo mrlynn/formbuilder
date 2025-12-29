@@ -248,9 +248,14 @@ export function useOrganization() {
 
 /**
  * Require an organization to be selected
+ * Also waits for auth to complete loading before determining org needs
  */
 export function useRequireOrganization() {
-  const { organization, isLoading, organizations } = useOrganization();
+  const { isLoading: isAuthLoading } = useAuth();
+  const { organization, isLoading: isOrgLoading, organizations } = useOrganization();
+
+  // Consider both auth and org loading states
+  const isLoading = isAuthLoading || isOrgLoading;
 
   const needsOrg = !isLoading && !organization && organizations.length === 0;
   const needsSelection = !isLoading && !organization && organizations.length > 0;

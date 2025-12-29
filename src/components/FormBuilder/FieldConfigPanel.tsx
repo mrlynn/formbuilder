@@ -33,7 +33,7 @@ import {
   Image,
   SpaceBar
 } from '@mui/icons-material';
-import { FieldConfig, LayoutFieldType, FieldWidth } from '@/types/form';
+import { FieldConfig, LayoutFieldType, FieldWidth, FormDataSource } from '@/types/form';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
 import { LookupConfigEditor } from './LookupConfigEditor';
 import { ComputedConfigEditor } from './ComputedConfigEditor';
@@ -64,6 +64,8 @@ interface FieldConfigPanelProps {
   onRemoveField?: (path: string) => void;
   onMoveField?: (path: string, direction: 'up' | 'down') => void;
   onReorderFields?: (newOrder: FieldConfig[]) => void;
+  dataSource?: FormDataSource;
+  organizationId?: string;
 }
 
 export function FieldConfigPanel({
@@ -72,7 +74,9 @@ export function FieldConfigPanel({
   onAddField,
   onRemoveField,
   onMoveField,
-  onReorderFields
+  onReorderFields,
+  dataSource,
+  organizationId
 }: FieldConfigPanelProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [draggedField, setDraggedField] = useState<string | null>(null);
@@ -500,6 +504,8 @@ export function FieldConfigPanel({
             onUpdate={(lookup) =>
               onUpdateField(config.path, { lookup })
             }
+            dataSource={dataSource}
+            organizationId={organizationId}
           />
           <ComputedConfigEditor
             config={config}

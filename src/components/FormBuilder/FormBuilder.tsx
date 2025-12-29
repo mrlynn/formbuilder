@@ -24,6 +24,8 @@ import { FormSaveDialog, SavedFormInfo } from './FormSaveDialog';
 import { FormLibrary } from './FormLibrary';
 import { FormSettingsDrawer } from './FormSettingsDrawer';
 import { EmptyFormState } from './EmptyFormState';
+import { AIGenerationConnectionContext } from './AIFormGeneratorDialog';
+import { NewFormDialog } from './NewFormDialog';
 import { QuickPublishButton } from './QuickPublishButton';
 import { AddQuestionDialog } from './AddQuestionDialog';
 import { DataSourceSetupModal } from './DataSourceSetupModal';
@@ -88,6 +90,9 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
   const [advancedMode, setAdvancedMode] = useState(false);
+  const [newFormDialogOpen, setNewFormDialogOpen] = useState(false);
+  const [pendingField, setPendingField] = useState<FieldConfig | null>(null);
+  const [pendingTemplate, setPendingTemplate] = useState<{ name: string; fields: FieldConfig[] } | null>(null);
 
   // Get selected field config
   const selectedFieldConfig = selectedFieldPath
@@ -460,10 +465,13 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
       source: 'custom',
       ...(isLayout ? { layout: { type: type as any } } : {}),
       ...(type === 'radio' || type === 'checkbox' || type === 'select' ? {
-        options: [
-          { value: 'option1', label: 'Option 1' },
-          { value: 'option2', label: 'Option 2' },
-        ]
+        validation: {
+          options: [
+            { value: 'option_1', label: 'Option 1' },
+            { value: 'option_2', label: 'Option 2' },
+            { value: 'option_3', label: 'Option 3' },
+          ]
+        }
       } : {}),
     };
 
@@ -552,6 +560,64 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
     }
   };
 
+  // Handle starting a new form with collection naming
+  const handleStartNewForm = (field: FieldConfig, templateName?: string) => {
+    // If no fields yet, prompt for form name first
+    if (fieldConfigs.length === 0) {
+      setPendingField(field);
+      if (templateName) {
+        setPendingTemplate({ name: templateName, fields: [field] });
+      }
+      setNewFormDialogOpen(true);
+    } else {
+      // Already have fields, just add the new one
+      addCustomField(field);
+      setSelectedFieldPath(field.path);
+    }
+  };
+
+  // Handle adding a template with all fields at once
+  const handleAddTemplate = (fields: FieldConfig[], templateName: string) => {
+    if (fields.length === 0) return;
+
+    // Store all fields for batch addition after form naming
+    setPendingTemplate({ name: templateName, fields });
+    setPendingField(fields[0]); // Keep first field for backwards compatibility
+    setNewFormDialogOpen(true);
+  };
+
+  // Handle new form dialog confirmation
+  const handleNewFormConfirm = (formName: string, collectionName: string) => {
+    // Set the form name
+    setCurrentFormName(formName);
+
+    // Set the collection name in data source
+    setDataSource({
+      collection: collectionName,
+    });
+
+    // Add the pending field(s)
+    if (pendingTemplate && pendingTemplate.fields.length > 0) {
+      // Add all template fields
+      pendingTemplate.fields.forEach((field, index) => {
+        addCustomField(field);
+        // Select the first field
+        if (index === 0) {
+          setSelectedFieldPath(field.path);
+        }
+      });
+    } else if (pendingField) {
+      // Single field (non-template case)
+      addCustomField(pendingField);
+      setSelectedFieldPath(pendingField.path);
+    }
+
+    // Clear pending state
+    setPendingField(null);
+    setPendingTemplate(null);
+    setNewFormDialogOpen(false);
+  };
+
   const handleInsert = async () => {
     if (!connectionString || !databaseName || !collection) {
       setError('Please connect to MongoDB and select a collection');
@@ -589,6 +655,35 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
       setIsLoading(false);
     }
   };
+
+  // Handle AI-generated form with connection context
+  const handleAIGenerateWithConnection = useCallback((fields: FieldConfig[], connectionContext?: AIGenerationConnectionContext) => {
+    // Add all the generated fields
+    fields.forEach((field, index) => {
+      setTimeout(() => {
+        addCustomField(field);
+        if (index === 0) {
+          setSelectedFieldPath(field.path);
+        }
+      }, index * 50);
+    });
+
+    // If connection context is provided, set up the data source
+    if (connectionContext) {
+      // Set organization ID if from vault
+      if (connectionContext.organizationId) {
+        setOrganizationId(connectionContext.organizationId);
+      }
+
+      // Set up the data source with vault reference
+      if (connectionContext.vaultId) {
+        setDataSource({
+          vaultId: connectionContext.vaultId,
+          collection: connectionContext.collection,
+        });
+      }
+    }
+  }, []);
 
   // Check if we have a connection - if not, show empty state with option to add fields manually
   const hasConnection = Boolean(connectionString && databaseName && collection);
@@ -799,11 +894,12 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
         // New simplified empty state - no fields yet
         <EmptyFormState
           onAddField={(field) => {
-            addCustomField(field);
-            setSelectedFieldPath(field.path);
+            handleStartNewForm(field);
           }}
+          onAddTemplate={handleAddTemplate}
           onOpenLibrary={() => setShowLibrary(true)}
           hasConnection={hasConnection}
+          onAIGenerateWithConnection={handleAIGenerateWithConnection}
         />
       ) : (
         // Main editing area - Google Forms style centered layout
@@ -841,6 +937,8 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
             allFieldConfigs={fieldConfigs}
             formSlug={currentFormSlug}
             advancedMode={advancedMode}
+            dataSource={dataSource}
+            organizationId={organizationId}
             onClose={() => setSelectedFieldPath(null)}
             onUpdateField={updateFieldConfig}
             onDeleteField={removeCustomField}
@@ -870,6 +968,18 @@ export function FormBuilder({ initialFormId }: FormBuilderProps) {
           setSelectedFieldPath(field.path);
           setInsertAtIndex(null);
         }}
+      />
+
+      {/* New Form Dialog - prompts for form name/collection when starting fresh */}
+      <NewFormDialog
+        open={newFormDialogOpen}
+        onClose={() => {
+          setNewFormDialogOpen(false);
+          setPendingField(null);
+          setPendingTemplate(null);
+        }}
+        onConfirm={handleNewFormConfirm}
+        suggestedName={pendingTemplate?.name || ''}
       />
 
       {/* Save Dialog */}

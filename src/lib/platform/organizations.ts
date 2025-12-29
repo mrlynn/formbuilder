@@ -26,6 +26,7 @@ import {
   AuditLogEntry,
 } from '@/types/platform';
 import crypto from 'crypto';
+import { isAutoProvisioningAvailable, queueClusterProvisioning, deleteProvisionedCluster } from '../atlas';
 
 // ============================================
 // Organization CRUD
@@ -36,6 +37,7 @@ export interface CreateOrgInput {
   slug: string;
   createdBy: string;
   plan?: OrgPlan;
+  skipProvisioning?: boolean;  // Skip auto-provisioning of M0 cluster
 }
 
 /**
@@ -115,6 +117,21 @@ export async function createOrganization(input: CreateOrgInput): Promise<Organiz
     timestamp: new Date(),
   });
 
+  // Auto-provision M0 cluster for free tier organizations
+  if (!input.skipProvisioning && isAutoProvisioningAvailable()) {
+    try {
+      console.log(`[Org] Auto-provisioning M0 cluster for org ${org.orgId}`);
+      await queueClusterProvisioning({
+        organizationId: org.orgId,
+        userId: input.createdBy,
+        databaseName: 'forms',
+      });
+    } catch (error) {
+      // Don't fail org creation if provisioning fails
+      console.error('[Org] Failed to queue cluster provisioning:', error);
+    }
+  }
+
   return org;
 }
 
@@ -171,7 +188,7 @@ export async function updateOrganization(
 }
 
 /**
- * Delete organization (soft delete - marks as deleted)
+ * Delete organization and clean up all associated resources
  */
 export async function deleteOrganization(
   orgId: string,
@@ -179,6 +196,21 @@ export async function deleteOrganization(
 ): Promise<boolean> {
   const orgsCollection = await getOrganizationsCollection();
   const usersCollection = await getUsersCollection();
+
+  // Clean up Atlas cluster resources first
+  try {
+    console.log(`[Org] Cleaning up Atlas cluster for org ${orgId}`);
+    const clusterResult = await deleteProvisionedCluster(orgId, deletedBy);
+    if (clusterResult.success) {
+      console.log(`[Org] Successfully deleted Atlas cluster for org ${orgId}`);
+    } else if (clusterResult.error !== 'No provisioned cluster found') {
+      console.error(`[Org] Failed to delete Atlas cluster: ${clusterResult.error}`);
+      // Continue with org deletion even if cluster cleanup fails
+    }
+  } catch (error) {
+    console.error('[Org] Error cleaning up Atlas cluster:', error);
+    // Continue with org deletion even if cluster cleanup fails
+  }
 
   // Remove org from all users' memberships
   await usersCollection.updateMany(
@@ -200,7 +232,7 @@ export async function deleteOrganization(
       resourceId: orgId,
       organizationId: orgId,
       action: 'delete',
-      details: {},
+      details: { clusterCleanedUp: true },
       timestamp: new Date(),
     });
   }

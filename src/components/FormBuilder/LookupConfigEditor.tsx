@@ -18,21 +18,26 @@ import {
   CircularProgress
 } from '@mui/material';
 import { ExpandMore, ExpandLess, Link as LinkIcon } from '@mui/icons-material';
-import { FieldConfig, LookupConfig } from '@/types/form';
+import { FieldConfig, LookupConfig, FormDataSource } from '@/types/form';
 import { usePipeline } from '@/contexts/PipelineContext';
 
 interface LookupConfigEditorProps {
   config: FieldConfig;
   allFieldConfigs: FieldConfig[];
   onUpdate: (lookup: LookupConfig | undefined) => void;
+  // New props for vault-based connections
+  dataSource?: FormDataSource;
+  organizationId?: string;
 }
 
 export function LookupConfigEditor({
   config,
   allFieldConfigs,
-  onUpdate
+  onUpdate,
+  dataSource,
+  organizationId
 }: LookupConfigEditorProps) {
-  const { connectionString, databaseName } = usePipeline();
+  const { connectionString: pipelineConnString, databaseName: pipelineDbName } = usePipeline();
   const [expanded, setExpanded] = useState(!!config.lookup);
   const [collections, setCollections] = useState<string[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(false);
@@ -50,18 +55,52 @@ export function LookupConfigEditor({
 
   const hasLookup = !!config.lookup;
 
+  // Determine which connection to use: vault-based or legacy pipeline
+  const hasVaultConnection = !!(dataSource?.vaultId && organizationId);
+  const hasLegacyConnection = !!(pipelineConnString && pipelineDbName);
+  const hasAnyConnection = hasVaultConnection || hasLegacyConnection;
+
   // Fetch available collections
   useEffect(() => {
-    if (!connectionString || !databaseName) return;
+    if (!hasAnyConnection) return;
 
     const fetchCollections = async () => {
       setCollectionsLoading(true);
       try {
-        const response = await fetch('/api/mongodb/collections', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ connectionString, databaseName })
-        });
+        let response;
+
+        if (hasVaultConnection) {
+          // Use vault-based connection - first decrypt, then fetch collections
+          const decryptResponse = await fetch(
+            `/api/organizations/${organizationId}/vault/${dataSource!.vaultId}/decrypt`
+          );
+          const decryptData = await decryptResponse.json();
+
+          if (!decryptData.connectionString) {
+            console.error('Failed to decrypt vault connection');
+            return;
+          }
+
+          response = await fetch('/api/mongodb/collections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              connectionString: decryptData.connectionString,
+              databaseName: decryptData.database
+            })
+          });
+        } else {
+          // Use legacy pipeline connection
+          response = await fetch('/api/mongodb/collections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              connectionString: pipelineConnString,
+              databaseName: pipelineDbName
+            })
+          });
+        }
+
         const data = await response.json();
         if (data.collections && Array.isArray(data.collections)) {
           // Handle both string arrays and object arrays with name property
@@ -78,11 +117,11 @@ export function LookupConfigEditor({
     };
 
     fetchCollections();
-  }, [connectionString, databaseName]);
+  }, [hasVaultConnection, hasLegacyConnection, hasAnyConnection, dataSource, organizationId, pipelineConnString, pipelineDbName]);
 
   // Fetch fields from selected collection
   useEffect(() => {
-    if (!connectionString || !databaseName || !lookup.collection) {
+    if (!hasAnyConnection || !lookup.collection) {
       setCollectionFields([]);
       return;
     }
@@ -90,6 +129,27 @@ export function LookupConfigEditor({
     const fetchFields = async () => {
       setLoading(true);
       try {
+        let connectionString: string;
+        let databaseName: string;
+
+        if (hasVaultConnection) {
+          // Decrypt vault connection
+          const decryptResponse = await fetch(
+            `/api/organizations/${organizationId}/vault/${dataSource!.vaultId}/decrypt`
+          );
+          const decryptData = await decryptResponse.json();
+
+          if (!decryptData.connectionString) {
+            console.error('Failed to decrypt vault connection');
+            return;
+          }
+          connectionString = decryptData.connectionString;
+          databaseName = decryptData.database;
+        } else {
+          connectionString = pipelineConnString!;
+          databaseName = pipelineDbName!;
+        }
+
         const response = await fetch('/api/mongodb/sample-documents', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -114,7 +174,7 @@ export function LookupConfigEditor({
     };
 
     fetchFields();
-  }, [connectionString, databaseName, lookup.collection]);
+  }, [hasVaultConnection, hasAnyConnection, dataSource, organizationId, pipelineConnString, pipelineDbName, lookup.collection]);
 
   const extractFieldNames = (doc: any, prefix = ''): string[] => {
     const fields: string[] = [];

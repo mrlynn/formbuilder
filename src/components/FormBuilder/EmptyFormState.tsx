@@ -22,13 +22,15 @@ import {
 } from '@mui/icons-material';
 import { QuestionTypePicker } from './QuestionTypePicker';
 import { FieldConfig } from '@/types/form';
-import AIFormGeneratorDialog from './AIFormGeneratorDialog';
+import AIFormGeneratorDialog, { AIGenerationConnectionContext } from './AIFormGeneratorDialog';
 
 interface EmptyFormStateProps {
   onAddField: (field: FieldConfig) => void;
+  onAddTemplate?: (fields: FieldConfig[], templateName: string) => void;
   onOpenLibrary: () => void;
   onConnectDatabase?: () => void;
   hasConnection: boolean;
+  onAIGenerateWithConnection?: (fields: FieldConfig[], connectionContext?: AIGenerationConnectionContext) => void;
 }
 
 // Form templates for quick start - organized by category
@@ -461,9 +463,11 @@ const TEMPLATE_CATEGORIES = [
 
 export function EmptyFormState({
   onAddField,
+  onAddTemplate,
   onOpenLibrary,
   onConnectDatabase,
   hasConnection,
+  onAIGenerateWithConnection,
 }: EmptyFormStateProps) {
   const [activeTab, setActiveTab] = useState(0);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
@@ -475,15 +479,22 @@ export function EmptyFormState({
     : TEMPLATES.filter(t => t.category === selectedCategory);
 
   const handleTemplateSelect = (template: typeof TEMPLATES[0]) => {
-    template.fields.forEach((field, index) => {
-      // Add a small delay between each field to maintain order
-      setTimeout(() => {
-        onAddField({
-          ...field,
-          source: 'custom',
-        } as FieldConfig);
-      }, index * 10);
-    });
+    const fields = template.fields.map(field => ({
+      ...field,
+      source: 'custom' as const,
+    })) as FieldConfig[];
+
+    if (onAddTemplate) {
+      // Use batch template handler if available
+      onAddTemplate(fields, template.name);
+    } else {
+      // Fallback to adding fields one by one (legacy behavior)
+      fields.forEach((field, index) => {
+        setTimeout(() => {
+          onAddField(field);
+        }, index * 10);
+      });
+    }
   };
 
   return (
@@ -850,9 +861,12 @@ export function EmptyFormState({
       <AIFormGeneratorDialog
         open={aiDialogOpen}
         onClose={() => setAiDialogOpen(false)}
-        onGenerate={(form) => {
-          // Apply generated form fields
-          if (form.fieldConfigs) {
+        onGenerate={(form, connectionContext) => {
+          // If connection context is provided, use the new handler that sets up the data source
+          if (connectionContext && onAIGenerateWithConnection && form.fieldConfigs) {
+            onAIGenerateWithConnection(form.fieldConfigs, connectionContext);
+          } else if (form.fieldConfigs) {
+            // Fall back to adding fields one by one
             form.fieldConfigs.forEach((field, index) => {
               setTimeout(() => {
                 onAddField(field);

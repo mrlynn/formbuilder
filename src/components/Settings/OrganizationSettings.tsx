@@ -89,6 +89,12 @@ export function OrganizationSettings() {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuOrg, setMenuOrg] = useState<Organization | null>(null);
 
+  // Delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchOrganizations();
   }, []);
@@ -187,6 +193,42 @@ export function OrganizationSettings() {
     } finally {
       setInviting(false);
     }
+  };
+
+  const handleDeleteOrg = async () => {
+    if (!orgToDelete) return;
+
+    try {
+      setDeleting(true);
+      setDeleteError(null);
+
+      const response = await fetch(`/api/organizations/${orgToDelete.orgId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setDeleteDialogOpen(false);
+        setOrgToDelete(null);
+        // Refresh organizations list
+        await fetchOrganizations();
+      } else {
+        setDeleteError(data.error || 'Failed to delete organization');
+      }
+    } catch (err) {
+      setDeleteError('Failed to connect to server');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteClick = () => {
+    if (menuOrg) {
+      setOrgToDelete(menuOrg);
+      setDeleteDialogOpen(true);
+    }
+    setMenuAnchor(null);
   };
 
   const generateSlug = (name: string) => {
@@ -387,7 +429,7 @@ export function OrganizationSettings() {
           Settings
         </MenuItem>
         <MenuItem
-          onClick={() => setMenuAnchor(null)}
+          onClick={handleDeleteClick}
           sx={{ color: 'error.main' }}
           disabled={menuOrg?.role !== 'owner'}
         >
@@ -555,6 +597,61 @@ export function OrganizationSettings() {
             sx={{ bgcolor: '#00ED64', color: '#001E2B', '&:hover': { bgcolor: '#00c853' } }}
           >
             {inviting ? <CircularProgress size={20} /> : 'Send Invite'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteDialogOpen(false);
+            setOrgToDelete(null);
+            setDeleteError(null);
+          }
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: 'error.main' }}>
+          Delete Organization
+        </DialogTitle>
+        <DialogContent>
+          {deleteError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {deleteError}
+            </Alert>
+          )}
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Are you sure you want to delete <strong>{orgToDelete?.name}</strong>?
+          </Typography>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            This action cannot be undone. All forms, connections, and data associated with this organization will be permanently deleted.
+          </Alert>
+          <Typography variant="body2" color="text.secondary">
+            Type the organization name to confirm: <strong>{orgToDelete?.name}</strong>
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setDeleteDialogOpen(false);
+              setOrgToDelete(null);
+              setDeleteError(null);
+            }}
+            disabled={deleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteOrg}
+            variant="contained"
+            color="error"
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={20} /> : <Delete />}
+          >
+            {deleting ? 'Deleting...' : 'Delete Organization'}
           </Button>
         </DialogActions>
       </Dialog>
